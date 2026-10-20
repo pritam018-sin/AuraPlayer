@@ -67,6 +67,17 @@ Supports: MP4, MKV, AVI, WebM, MOV, FLV, WMV, TS, M4V, and streaming URLs.
 "@
 Set-Content -Path "$portableFolder\README.txt" -Value $readme
 
+# Copy scripts & icon into portable folder
+Copy-Item -Path "$projectRoot\register.bat" -Destination "$portableFolder\register.bat" -Force
+Copy-Item -Path "$projectRoot\unregister.bat" -Destination "$portableFolder\unregister.bat" -Force
+Copy-Item -Path "$projectRoot\register_windows_app.ps1" -Destination "$portableFolder\register_windows_app.ps1" -Force
+Copy-Item -Path "$projectRoot\unregister_windows_app.ps1" -Destination "$portableFolder\unregister_windows_app.ps1" -Force
+
+$iconSrc = "$projectRoot\windows\runner\resources\app_icon.ico"
+if (Test-Path $iconSrc) {
+    Copy-Item -Path $iconSrc -Destination "$portableFolder\app_icon.ico" -Force
+}
+
 Write-Host "Compressing to standalone ZIP..."
 Compress-Archive -Path "$portableFolder\*" -DestinationPath $zipPath -Force
 
@@ -78,12 +89,6 @@ Write-Host ("Zip Size: {0:N1} MB" -f $zipSize)
 $desktop = [Environment]::GetFolderPath('Desktop')
 Copy-Item -Path $zipPath -Destination (Join-Path $desktop "AuraPlayer-Windows-Portable.zip") -Force
 Write-Host "COPIED_TO_DESKTOP: $desktop\AuraPlayer-Windows-Portable.zip"
-
-# Copy app_icon.ico into portableFolder if present
-$iconSrc = "$projectRoot\windows\runner\resources\app_icon.ico"
-if (Test-Path $iconSrc) {
-    Copy-Item -Path $iconSrc -Destination "$portableFolder\app_icon.ico" -Force
-}
 
 # Update Desktop Shortcut
 $wsh = New-Object -ComObject WScript.Shell
