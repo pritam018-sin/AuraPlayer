@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +9,10 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../player/player_controller.dart';
 import '../../player/player_models.dart';
 import '../../state/player_provider.dart';
-import '../titlebar/custom_titlebar.dart';
+import '../menubar/modern_menubar.dart';
+import '../modals/media_info_modal.dart';
+import '../modals/open_network_modal.dart';
+import 'context_menu.dart';
 import 'floating_controls.dart';
 import 'playlist_drawer.dart';
 
@@ -81,6 +83,23 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
         widget.playerWrapper.playOrPause();
         _onUserActivity();
         break;
+      case LogicalKeyboardKey.keyS:
+        if (isShift) {
+          widget.playerWrapper.takeSnapshot().then((path) {
+            if (mounted && path != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Snapshot saved: ${path.split(RegExp(r'[/\\]')).last}'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          });
+        } else {
+          widget.playerWrapper.stop();
+        }
+        _onUserActivity();
+        break;
       case LogicalKeyboardKey.arrowLeft:
         final delta = isShift ? const Duration(seconds: -30) : const Duration(seconds: -5);
         widget.playerWrapper.seekRelative(delta);
@@ -124,9 +143,31 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
         widget.playerWrapper.setRate(curRate + 0.25);
         _onUserActivity();
         break;
+      case LogicalKeyboardKey.keyP:
+        ref.read(playlistProvider.notifier).prev();
+        _onUserActivity();
+        break;
+      case LogicalKeyboardKey.keyN:
+        if (isControl) {
+          OpenNetworkModal.show(context);
+        } else {
+          ref.read(playlistProvider.notifier).next();
+        }
+        _onUserActivity();
+        break;
       case LogicalKeyboardKey.keyO:
         if (isControl) {
           _pickFileShortcut();
+        }
+        break;
+      case LogicalKeyboardKey.keyL:
+        if (isControl) {
+          ref.read(windowControlsProvider.notifier).togglePlaylist();
+        }
+        break;
+      case LogicalKeyboardKey.keyI:
+        if (isControl) {
+          MediaInfoModal.show(context, widget.playerWrapper);
         }
         break;
     }
@@ -186,6 +227,14 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                       ref.read(windowControlsProvider.notifier).toggleFullscreen();
                       _onUserActivity();
                     },
+                    onSecondaryTapDown: (details) {
+                      VideoContextMenu.show(
+                        context,
+                        details.globalPosition,
+                        widget.playerWrapper,
+                        ref,
+                      );
+                    },
                     child: Center(
                       child: Video(
                         controller: widget.playerWrapper.videoController,
@@ -195,13 +244,13 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                   ),
                 ),
 
-                // Top Custom Titlebar
+                // Top VLC Modern Menubar
                 Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: CustomTitleBar(
-                    title: widget.playerWrapper.currentTitle,
+                  child: ModernMenuBar(
+                    playerWrapper: widget.playerWrapper,
                     isVisible: _controlsVisible,
                   ),
                 ),
@@ -220,7 +269,7 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                 // Slide-in Playlist Drawer
                 if (windowState.isPlaylistOpen)
                   Positioned(
-                    top: 44,
+                    top: 42,
                     right: 0,
                     bottom: 0,
                     child: const PlaylistDrawer(),

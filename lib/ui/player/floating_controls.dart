@@ -24,6 +24,7 @@ class FloatingControls extends ConsumerStatefulWidget {
 
 class _FloatingControlsState extends ConsumerState<FloatingControls> {
   bool _isHoveringVolume = false;
+  bool _showRemainingTime = false;
 
   String _formatDuration(Duration d) {
     final hours = d.inHours;
@@ -33,6 +34,15 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
       return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     }
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  void _cycleAspectRatio() {
+    final current = widget.playerWrapper.currentAspectRatio;
+    const ratios = [null, '16:9', '4:3', '21:9'];
+    final idx = ratios.indexOf(current);
+    final next = ratios[(idx + 1) % ratios.length];
+    widget.playerWrapper.setAspectRatio(next);
+    setState(() {});
   }
 
   @override
@@ -79,6 +89,10 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                           builder: (context, rateSnap) {
                             final rate = rateSnap.data ?? 1.0;
 
+                            final timeDisplay = _showRemainingTime
+                                ? '-${_formatDuration(duration - position)} / ${_formatDuration(duration)}'
+                                : '${_formatDuration(position)} / ${_formatDuration(duration)}';
+
                             return AnimatedOpacity(
                               duration: const Duration(milliseconds: 240),
                               curve: Curves.easeOutCubic,
@@ -86,10 +100,10 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                               child: IgnorePointer(
                                 ignoring: !widget.isVisible,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                                   child: FrostedGlass(
                                     borderRadius: 20,
-                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                     fillColor: AppTheme.controlPillFill,
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
@@ -109,23 +123,23 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                           children: [
                                             // Previous Track
                                             _iconButton(
-                                              tooltip: 'Previous',
+                                              tooltip: 'Previous (P)',
                                               icon: CupertinoIcons.backward_fill,
-                                              size: 16,
+                                              size: 15,
                                               enabled: playlist.hasPrev,
                                               onTap: () => playlistNotifier.prev(),
                                             ),
-                                            const SizedBox(width: 4),
+                                            const SizedBox(width: 2),
 
                                             // Replay 5s
                                             _iconButton(
                                               tooltip: 'Rewind 5s (Left)',
                                               icon: CupertinoIcons.gobackward,
-                                              size: 18,
+                                              size: 17,
                                               onTap: () => widget.playerWrapper
                                                   .seekRelative(const Duration(seconds: -5)),
                                             ),
-                                            const SizedBox(width: 6),
+                                            const SizedBox(width: 4),
 
                                             // Play / Pause Prominent Button
                                             GestureDetector(
@@ -155,35 +169,51 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: 6),
+                                            const SizedBox(width: 4),
+
+                                            // Stop Button
+                                            _iconButton(
+                                              tooltip: 'Stop (S)',
+                                              icon: CupertinoIcons.stop_fill,
+                                              size: 15,
+                                              onTap: () => widget.playerWrapper.stop(),
+                                            ),
+                                            const SizedBox(width: 2),
 
                                             // Forward 5s
                                             _iconButton(
                                               tooltip: 'Forward 5s (Right)',
                                               icon: CupertinoIcons.goforward,
-                                              size: 18,
+                                              size: 17,
                                               onTap: () => widget.playerWrapper
                                                   .seekRelative(const Duration(seconds: 5)),
                                             ),
-                                            const SizedBox(width: 4),
+                                            const SizedBox(width: 2),
 
                                             // Next Track
                                             _iconButton(
-                                              tooltip: 'Next',
+                                              tooltip: 'Next (N)',
                                               icon: CupertinoIcons.forward_fill,
-                                              size: 16,
+                                              size: 15,
                                               enabled: playlist.hasNext,
                                               onTap: () => playlistNotifier.next(),
                                             ),
 
-                                            const SizedBox(width: 14),
+                                            const SizedBox(width: 12),
 
-                                            // Timestamps: 00:00 / 00:00
-                                            Text(
-                                              '${_formatDuration(position)} / ${_formatDuration(duration)}',
-                                              style: AppTheme.caption.copyWith(
-                                                fontWeight: FontWeight.w500,
-                                                color: AppTheme.textPrimary,
+                                            // Timestamps (Click to toggle elapsed vs remaining)
+                                            InkWell(
+                                              onTap: () => setState(() => _showRemainingTime = !_showRemainingTime),
+                                              borderRadius: BorderRadius.circular(4),
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                child: Text(
+                                                  timeDisplay,
+                                                  style: AppTheme.caption.copyWith(
+                                                    fontWeight: FontWeight.w500,
+                                                    color: AppTheme.textPrimary,
+                                                  ),
+                                                ),
                                               ),
                                             ),
 
@@ -191,10 +221,8 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
 
                                             // Volume Slider & Mute
                                             MouseRegion(
-                                              onEnter: (_) =>
-                                                  setState(() => _isHoveringVolume = true),
-                                              onExit: (_) =>
-                                                  setState(() => _isHoveringVolume = false),
+                                              onEnter: (_) => setState(() => _isHoveringVolume = true),
+                                              onExit: (_) => setState(() => _isHoveringVolume = false),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
@@ -205,36 +233,48 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                         : (volume < 50
                                                             ? CupertinoIcons.volume_down
                                                             : CupertinoIcons.volume_up),
-                                                    size: 18,
+                                                    size: 17,
                                                     onTap: () => widget.playerWrapper.toggleMute(),
                                                   ),
                                                   AnimatedContainer(
                                                     duration: const Duration(milliseconds: 200),
                                                     curve: Curves.easeOutCubic,
-                                                    width: _isHoveringVolume ? 90 : 0,
+                                                    width: _isHoveringVolume ? 120 : 0,
                                                     child: _isHoveringVolume
-                                                        ? SliderTheme(
-                                                            data: SliderThemeData(
-                                                              trackHeight: 3.5,
-                                                              thumbShape:
-                                                                  const RoundSliderThumbShape(
-                                                                enabledThumbRadius: 6,
+                                                        ? Row(
+                                                            children: [
+                                                              Expanded(
+                                                                child: SliderTheme(
+                                                                  data: SliderThemeData(
+                                                                    trackHeight: 3.5,
+                                                                    thumbShape: const RoundSliderThumbShape(
+                                                                      enabledThumbRadius: 6,
+                                                                    ),
+                                                                    overlayShape: const RoundSliderOverlayShape(
+                                                                      overlayRadius: 10,
+                                                                    ),
+                                                                    activeTrackColor: volume > 100
+                                                                        ? Colors.orangeAccent
+                                                                        : AppTheme.accent,
+                                                                    inactiveTrackColor: Colors.white24,
+                                                                    thumbColor: Colors.white,
+                                                                  ),
+                                                                  child: Slider(
+                                                                    value: volume.clamp(0.0, 150.0),
+                                                                    min: 0.0,
+                                                                    max: 150.0,
+                                                                    onChanged: (v) => widget.playerWrapper.setVolume(v),
+                                                                  ),
+                                                                ),
                                                               ),
-                                                              overlayShape:
-                                                                  const RoundSliderOverlayShape(
-                                                                overlayRadius: 10,
+                                                              Text(
+                                                                '${volume.toInt()}%',
+                                                                style: AppTheme.caption.copyWith(
+                                                                  fontSize: 10,
+                                                                  color: volume > 100 ? Colors.orangeAccent : AppTheme.textSecondary,
+                                                                ),
                                                               ),
-                                                              activeTrackColor: AppTheme.accent,
-                                                              inactiveTrackColor: Colors.white24,
-                                                              thumbColor: Colors.white,
-                                                            ),
-                                                            child: Slider(
-                                                              value: volume.clamp(0.0, 100.0),
-                                                              min: 0.0,
-                                                              max: 100.0,
-                                                              onChanged: (v) =>
-                                                                  widget.playerWrapper.setVolume(v),
-                                                            ),
+                                                            ],
                                                           )
                                                         : const SizedBox.shrink(),
                                                   ),
@@ -242,7 +282,30 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                               ),
                                             ),
 
-                                            const SizedBox(width: 10),
+                                            const SizedBox(width: 8),
+
+                                            // Aspect Ratio Quick Switcher
+                                            Tooltip(
+                                              message: 'Aspect Ratio: ${widget.playerWrapper.currentAspectRatio ?? 'Default'}',
+                                              child: InkWell(
+                                                onTap: _cycleAspectRatio,
+                                                borderRadius: BorderRadius.circular(6),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.surfaceSecondary,
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: AppTheme.glassBorder),
+                                                  ),
+                                                  child: Text(
+                                                    widget.playerWrapper.currentAspectRatio ?? 'Ratio',
+                                                    style: AppTheme.caption.copyWith(fontSize: 10, fontWeight: FontWeight.w600),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
+                                            const SizedBox(width: 8),
 
                                             // Playback Speed Pill
                                             Tooltip(
@@ -251,8 +314,7 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                 onTap: () => widget.playerWrapper.cycleSpeed(),
                                                 borderRadius: BorderRadius.circular(6),
                                                 child: Container(
-                                                  padding: const EdgeInsets.symmetric(
-                                                      horizontal: 8, vertical: 4),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                                   decoration: BoxDecoration(
                                                     color: AppTheme.surfaceSecondary,
                                                     borderRadius: BorderRadius.circular(6),
@@ -262,37 +324,54 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                     '${rate.toStringAsFixed(rate.truncateToDouble() == rate ? 0 : 2)}x',
                                                     style: AppTheme.caption.copyWith(
                                                       fontWeight: FontWeight.w600,
-                                                      color: rate != 1.0
-                                                          ? AppTheme.accent
-                                                          : AppTheme.textPrimary,
+                                                      fontSize: 11,
+                                                      color: rate != 1.0 ? AppTheme.accent : AppTheme.textPrimary,
                                                     ),
                                                   ),
                                                 ),
                                               ),
                                             ),
 
-                                            const SizedBox(width: 10),
+                                            const SizedBox(width: 8),
 
-                                            // Audio & Subtitles Menu
+                                            // Audio & Subtitles
                                             _iconButton(
                                               tooltip: 'Audio & Subtitles',
                                               icon: CupertinoIcons.captions_bubble,
-                                              size: 18,
-                                              onTap: () => AudioSubtitleSheet.show(
-                                                  context, widget.playerWrapper),
+                                              size: 17,
+                                              onTap: () => AudioSubtitleSheet.show(context, widget.playerWrapper),
                                             ),
 
-                                            const SizedBox(width: 6),
+                                            const SizedBox(width: 4),
+
+                                            // Snapshot Button
+                                            _iconButton(
+                                              tooltip: 'Take Snapshot (Shift+S)',
+                                              icon: CupertinoIcons.camera_fill,
+                                              size: 16,
+                                              onTap: () async {
+                                                final path = await widget.playerWrapper.takeSnapshot();
+                                                if (context.mounted && path != null) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text('Snapshot saved: ${path.split(RegExp(r'[/\\]')).last}'),
+                                                      behavior: SnackBarBehavior.floating,
+                                                      backgroundColor: AppTheme.surfaceSecondary,
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                            ),
+
+                                            const SizedBox(width: 4),
 
                                             // Fullscreen Toggle
                                             _iconButton(
-                                              tooltip: windowState.isFullscreen
-                                                  ? 'Exit Fullscreen (Esc)'
-                                                  : 'Fullscreen (F)',
+                                              tooltip: windowState.isFullscreen ? 'Exit Fullscreen (Esc)' : 'Fullscreen (F)',
                                               icon: windowState.isFullscreen
                                                   ? CupertinoIcons.fullscreen_exit
                                                   : CupertinoIcons.fullscreen,
-                                              size: 18,
+                                              size: 17,
                                               onTap: () => windowNotifier.toggleFullscreen(),
                                             ),
                                           ],
@@ -330,7 +409,7 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
         onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.all(7),
+          padding: const EdgeInsets.all(6),
           child: Icon(
             icon,
             size: size,

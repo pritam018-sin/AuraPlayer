@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
@@ -8,6 +9,8 @@ import '../../player/player_models.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/frosted_glass.dart';
+import '../modals/open_network_modal.dart';
+import '../modals/shortcuts_guide_modal.dart';
 
 class HomeView extends ConsumerStatefulWidget {
   const HomeView({super.key});
@@ -37,6 +40,24 @@ class _HomeViewState extends ConsumerState<HomeView> {
 
       if (items.isNotEmpty) {
         ref.read(playlistProvider.notifier).setList(items, initialIndex: 0);
+      }
+    }
+  }
+
+  Future<void> _openFolder() async {
+    final path = await FilePicker.platform.getDirectoryPath();
+    if (path != null) {
+      final dir = Directory(path);
+      final videoExts = ['.mp4', '.mkv', '.avi', '.webm', '.mov', '.flv', '.wmv'];
+      final files = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) => videoExts.any((ext) => f.path.toLowerCase().endsWith(ext)))
+          .map((f) => PlaylistItem(path: f.path, title: f.path.split(RegExp(r'[/\\]')).last))
+          .toList();
+
+      if (files.isNotEmpty) {
+        ref.read(playlistProvider.notifier).setList(files, initialIndex: 0);
       }
     }
   }
@@ -134,23 +155,55 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       ),
                       const SizedBox(height: 28),
 
-                      // Open Button
-                      ElevatedButton.icon(
-                        onPressed: _pickFiles,
-                        icon: const Icon(CupertinoIcons.folder_badge_plus, size: 18),
-                        label: const Text('Open Video File'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.accent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      // Action Buttons Row
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 10,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _pickFiles,
+                            icon: const Icon(CupertinoIcons.folder_badge_plus, size: 17),
+                            label: const Text('Open Video File'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.accent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                            ),
                           ),
-                          elevation: 0,
-                          textStyle: AppTheme.bodySmall.copyWith(
-                            fontWeight: FontWeight.w600,
+                          OutlinedButton.icon(
+                            onPressed: _openFolder,
+                            icon: const Icon(CupertinoIcons.folder, size: 17),
+                            label: const Text('Open Folder'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.textPrimary,
+                              side: const BorderSide(color: AppTheme.glassBorder),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                            ),
                           ),
-                        ),
+                          OutlinedButton.icon(
+                            onPressed: () => OpenNetworkModal.show(context),
+                            icon: const Icon(CupertinoIcons.globe, size: 17),
+                            label: const Text('Network Stream'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.textPrimary,
+                              side: const BorderSide(color: AppTheme.glassBorder),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Shortcuts Guide',
+                            onPressed: () => ShortcutsGuideModal.show(context),
+                            icon: const Icon(CupertinoIcons.question_circle, size: 20, color: AppTheme.textSecondary),
+                          ),
+                        ],
                       ),
                     ],
                   ),

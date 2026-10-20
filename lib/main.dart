@@ -11,7 +11,7 @@ import 'state/player_provider.dart';
 import 'theme/app_theme.dart';
 import 'ui/home/home_view.dart';
 import 'ui/player/video_surface.dart';
-import 'ui/titlebar/custom_titlebar.dart';
+import 'ui/menubar/modern_menubar.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,11 +122,11 @@ class AuraPlayerHome extends ConsumerWidget {
                     child: HomeView(),
                   ),
                 ),
-                const Positioned(
+                Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: CustomTitleBar(title: 'AuraPlayer', isVisible: true),
+                  child: ModernMenuBar(playerWrapper: playerWrapper, isVisible: true),
                 ),
               ],
             ),
