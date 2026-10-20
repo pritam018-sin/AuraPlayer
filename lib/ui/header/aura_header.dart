@@ -8,6 +8,7 @@ import '../../player/player_controller.dart';
 import '../../player/player_models.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
+import '../modals/about_modal.dart';
 import '../modals/media_info_modal.dart';
 import '../modals/open_network_modal.dart';
 import '../modals/shortcuts_guide_modal.dart';
@@ -106,46 +107,57 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
           child: Row(
             children: [
               // Aura Brand Logo & Title
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.auraGradient,
-                      borderRadius: BorderRadius.circular(7),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.accent.withValues(alpha: 0.45),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
+              GestureDetector(
+                onTap: () => AboutModal.show(context),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(7),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.accent.withValues(alpha: 0.45),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Icon(CupertinoIcons.play_arrow_solid, size: 13, color: Colors.white),
-                    ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: Image.asset(
+                            'assets/app_icon.png',
+                            width: 26,
+                            height: 26,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'AURA',
+                        style: AppTheme.body.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        ' PLAYER',
+                        style: AppTheme.body.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: AppTheme.textSecondary,
+                          letterSpacing: 0.8,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'AURA',
-                    style: AppTheme.body.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                      fontSize: 13,
-                    ),
-                  ),
-                  Text(
-                    ' PLAYER',
-                    style: AppTheme.body.copyWith(
-                      fontWeight: FontWeight.w400,
-                      color: AppTheme.textSecondary,
-                      letterSpacing: 0.8,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+                ),
               ),
 
               const SizedBox(width: 16),
@@ -214,6 +226,8 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                 items: [
                   _menuItem('Media Information', 'Ctrl+I', () => MediaInfoModal.show(context, widget.playerWrapper)),
                   _menuItem('Shortcuts Guide', '', () => ShortcutsGuideModal.show(context)),
+                  const PopupMenuDivider(height: 1),
+                  _menuItem('About AuraPlayer...', '', () => AboutModal.show(context)),
                 ],
               ),
 

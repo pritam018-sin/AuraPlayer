@@ -1,23 +1,21 @@
 ====================================================================
-                  AuraPlayer - Windows Portable
+                  AuraPlayer - Windows Suite
+        Powered by AuraStudio Corporation • Pritam
 ====================================================================
 A modern AuraMusic-styled desktop video player with VLC-grade power.
 
-HIGHLIGHTS:
-- Deep obsidian dark theme with frosted glass & crimson accents
-- Native Windows titlebar controls (Minimize, Maximize, Close)
-- Recursive Folder Import: Import entire folders (Movies, Shows, etc.)
-- Multi-Tab Navigation: Now Playing, Video Library, Queue, History
-- Full VLC Menus: Media, Playback, Audio, Video, Tools
-- Audio & Subtitle Track Selector, Subtitle Delay Sync
-- 150% Volume Boost with mouse wheel scroll control
-- Aspect Ratio Switcher (16:9, 4:3, 21:9, Default)
-- Real-time Video Adjustments (Brightness, Contrast, Saturation, Gamma)
-- One-click High-Resolution Snapshot / Screenshot capture
-- Resume playback: remembers where you left off for every file
+HOW TO USE / INSTALL:
+- OPTION A (Portable): Double-click 'AuraPlayer.exe' to run directly!
+- OPTION B (Full Install): Double-click 'Install-AuraPlayer.bat' to 
+  install to Windows, add to Start Menu, and enable right-click
+  "Play with AuraPlayer" on all your video files.
+- TO UNINSTALL: Double-click 'Uninstall-AuraPlayer.bat'.
 
-HOW TO RUN:
-Double-click 'AuraPlayer.exe' to launch the app!
+DEVELOPER & CORPORATION:
+- Organization: AuraStudio Corporation
+- Created by: Pritam
+- Engine: Flutter Native D3D11 + libmpv-2
+- License: MIT License (See LICENSE file)
 
 KEYBOARD SHORTCUTS:
   Space                : Play / Pause

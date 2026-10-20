@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "lumen" "\0"
+            VALUE "CompanyName", "AuraStudio Corporation" "\0"
+            VALUE "FileDescription", "AuraPlayer - Modern Desktop Video Player" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "lumen" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "lumen.exe" "\0"
-            VALUE "ProductName", "lumen" "\0"
+            VALUE "InternalName", "AuraPlayer" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 AuraStudio Corporation by Pritam. All rights reserved." "\0"
+            VALUE "OriginalFilename", "AuraPlayer.exe" "\0"
+            VALUE "ProductName", "AuraPlayer" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
