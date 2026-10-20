@@ -9,7 +9,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../player/player_controller.dart';
 import '../../player/player_models.dart';
 import '../../state/player_provider.dart';
-import '../menubar/modern_menubar.dart';
+import '../header/aura_header.dart';
 import '../modals/media_info_modal.dart';
 import '../modals/open_network_modal.dart';
 import 'context_menu.dart';
@@ -244,12 +244,12 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                   ),
                 ),
 
-                // Top VLC Modern Menubar
+                // Top Aura Header with VLC menus & Windows controls
                 Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: ModernMenuBar(
+                  child: AuraHeader(
                     playerWrapper: widget.playerWrapper,
                     isVisible: _controlsVisible,
                   ),

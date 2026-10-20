@@ -3,6 +3,7 @@ import '../player/player_models.dart';
 
 class StorageService {
   static const String _keyRecentFiles = 'aura_recent_files';
+  static const String _keyImportedFolders = 'aura_imported_folders';
   static const String _keyVolume = 'aura_volume';
   static const String _keyMuted = 'aura_muted';
   static const String _keySpeed = 'aura_speed';
@@ -54,9 +55,8 @@ class StorageService {
     final current = getRecentFiles();
     current.removeWhere((e) => e.path == item.path);
     current.insert(0, item);
-    // Keep at most 20 recent files
-    if (current.length > 20) {
-      current.removeRange(20, current.length);
+    if (current.length > 30) {
+      current.removeRange(30, current.length);
     }
     final encoded = current.map((e) => e.toJson()).toList();
     await _prefs.setStringList(_keyRecentFiles, encoded);
@@ -64,5 +64,24 @@ class StorageService {
 
   Future<void> clearRecentFiles() async {
     await _prefs.remove(_keyRecentFiles);
+  }
+
+  // Imported Library Folders
+  List<String> getImportedFolders() {
+    return _prefs.getStringList(_keyImportedFolders) ?? [];
+  }
+
+  Future<void> addImportedFolder(String folderPath) async {
+    final current = getImportedFolders();
+    if (!current.contains(folderPath)) {
+      current.add(folderPath);
+      await _prefs.setStringList(_keyImportedFolders, current);
+    }
+  }
+
+  Future<void> removeImportedFolder(String folderPath) async {
+    final current = getImportedFolders();
+    current.remove(folderPath);
+    await _prefs.setStringList(_keyImportedFolders, current);
   }
 }

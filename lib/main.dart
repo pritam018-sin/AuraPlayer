@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,9 +11,11 @@ import 'player/player_models.dart';
 import 'settings/storage_service.dart';
 import 'state/player_provider.dart';
 import 'theme/app_theme.dart';
-import 'ui/home/home_view.dart';
+import 'ui/header/aura_header.dart';
+import 'ui/library/library_view.dart';
 import 'ui/player/video_surface.dart';
-import 'ui/menubar/modern_menubar.dart';
+import 'ui/views/history_view.dart';
+import 'ui/views/queue_view.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +34,7 @@ Future<void> main(List<String> args) async {
     } catch (_) {}
   }
 
-  // Initialize WindowManager for frameless Apple-style window
+  // Initialize WindowManager for frameless window with native controls
   await windowManager.ensureInitialized();
 
   const windowOptions = WindowOptions(
@@ -108,28 +112,128 @@ class AuraPlayerHome extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final playerWrapper = ref.watch(playerControllerProvider);
     final playlist = ref.watch(playlistProvider);
+    final activeTab = ref.watch(activeTabProvider);
     final isPlayingMedia = playlist.currentItem != null;
 
+    // When playing in Video tab, render full-window video surface with auto-hiding overlay
+    if (activeTab == AuraTab.player && isPlayingMedia) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: VideoSurface(playerWrapper: playerWrapper),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: isPlayingMedia
-          ? VideoSurface(playerWrapper: playerWrapper)
-          : Stack(
-              children: [
-                const Positioned.fill(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 44),
-                    child: HomeView(),
+      backgroundColor: AppTheme.background,
+      body: Stack(
+        children: [
+          // AuraMusic-Inspired Ambient Glowing Background Orbs
+          Positioned(
+            top: -120,
+            left: -100,
+            child: IgnorePointer(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 110, sigmaY: 110),
+                child: Container(
+                  width: 380,
+                  height: 380,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.accent.withValues(alpha: 0.14),
                   ),
                 ),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: ModernMenuBar(playerWrapper: playerWrapper, isVisible: true),
-                ),
-              ],
+              ),
             ),
+          ),
+          Positioned(
+            bottom: -120,
+            right: -100,
+            child: IgnorePointer(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 110, sigmaY: 110),
+                child: Container(
+                  width: 400,
+                  height: 400,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.accentCyan.withValues(alpha: 0.10),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Main View Layout: Header + Active Tab Content
+          Column(
+            children: [
+              AuraHeader(
+                playerWrapper: playerWrapper,
+                isVisible: true,
+              ),
+              Expanded(
+                child: _buildActiveTabContent(ref, activeTab),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildActiveTabContent(WidgetRef ref, AuraTab tab) {
+    switch (tab) {
+      case AuraTab.player:
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.auraGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.accent.withValues(alpha: 0.4),
+                      blurRadius: 24,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(CupertinoIcons.play_arrow_solid, size: 32, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('No Video Playing', style: AppTheme.headline),
+              const SizedBox(height: 8),
+              Text(
+                'Select a video from your library, open a folder, or drop a media file.',
+                style: AppTheme.caption,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => ref.read(activeTabProvider.notifier).setTab(AuraTab.library),
+                icon: const Icon(CupertinoIcons.folder_fill, size: 16),
+                label: const Text('Browse Video Library'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+        );
+      case AuraTab.library:
+        return const LibraryView();
+      case AuraTab.playlist:
+        return const QueueView();
+      case AuraTab.history:
+        return const HistoryView();
+    }
   }
 }

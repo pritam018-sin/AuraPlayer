@@ -5,6 +5,20 @@ import '../player/player_controller.dart';
 import '../player/player_models.dart';
 import '../settings/storage_service.dart';
 
+enum AuraTab { player, library, playlist, history }
+
+class ActiveTabNotifier extends Notifier<AuraTab> {
+  @override
+  AuraTab build() => AuraTab.library;
+
+  void setTab(AuraTab tab) {
+    state = tab;
+  }
+}
+
+final activeTabProvider =
+    NotifierProvider<ActiveTabNotifier, AuraTab>(ActiveTabNotifier.new);
+
 final storageServiceProvider = Provider<StorageService>((ref) {
   throw UnimplementedError('StorageService must be overridden in main');
 });
@@ -50,6 +64,7 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
     state = PlaylistState(items: items, currentIndex: initialIndex);
     if (items.isNotEmpty && initialIndex >= 0 && initialIndex < items.length) {
       ref.read(playerControllerProvider).openFile(items[initialIndex].path);
+      ref.read(activeTabProvider.notifier).setTab(AuraTab.player);
     }
   }
 
@@ -58,6 +73,7 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
     if (playImmediately || state.currentIndex == -1) {
       state = state.copyWith(items: updated, currentIndex: updated.length - 1);
       ref.read(playerControllerProvider).openFile(item.path);
+      ref.read(activeTabProvider.notifier).setTab(AuraTab.player);
     } else {
       state = state.copyWith(items: updated);
     }
@@ -71,6 +87,7 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
       if (updated.isEmpty) {
         newIdx = -1;
         ref.read(playerControllerProvider).stop();
+        ref.read(activeTabProvider.notifier).setTab(AuraTab.library);
       } else {
         newIdx = index >= updated.length ? updated.length - 1 : index;
         ref.read(playerControllerProvider).openFile(updated[newIdx].path);
@@ -85,6 +102,7 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
     if (index >= 0 && index < state.items.length) {
       state = state.copyWith(currentIndex: index);
       ref.read(playerControllerProvider).openFile(state.items[index].path);
+      ref.read(activeTabProvider.notifier).setTab(AuraTab.player);
     }
   }
 
@@ -154,7 +172,7 @@ class WindowControlsNotifier extends Notifier<WindowControlsState> {
     final next = !state.isMiniMode;
     if (next) {
       await windowManager.setAlwaysOnTop(true);
-      await windowManager.setSize(const Size(420, 240));
+      await windowManager.setSize(const Size(440, 250));
     } else {
       await windowManager.setAlwaysOnTop(state.isAlwaysOnTop);
       await windowManager.setSize(const Size(1280, 720));
