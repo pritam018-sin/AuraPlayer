@@ -79,12 +79,21 @@ $desktop = [Environment]::GetFolderPath('Desktop')
 Copy-Item -Path $zipPath -Destination (Join-Path $desktop "AuraPlayer-Windows-Portable.zip") -Force
 Write-Host "COPIED_TO_DESKTOP: $desktop\AuraPlayer-Windows-Portable.zip"
 
+# Copy app_icon.ico into portableFolder if present
+$iconSrc = "$projectRoot\windows\runner\resources\app_icon.ico"
+if (Test-Path $iconSrc) {
+    Copy-Item -Path $iconSrc -Destination "$portableFolder\app_icon.ico" -Force
+}
+
 # Update Desktop Shortcut
 $wsh = New-Object -ComObject WScript.Shell
 $sc = $wsh.CreateShortcut((Join-Path $desktop "AuraPlayer.lnk"))
 $sc.TargetPath = "$portableFolder\AuraPlayer.exe"
 $sc.WorkingDirectory = $portableFolder
-$sc.Description = "AuraPlayer - Modern Apple Style Video Player"
+$sc.Description = "AuraPlayer - Modern AuraMusic Style Video Player"
+if (Test-Path "$portableFolder\app_icon.ico") {
+    $sc.IconLocation = "$portableFolder\app_icon.ico,0"
+}
 $sc.Save()
 Write-Host "UPDATED_SHORTCUT: $desktop\AuraPlayer.lnk"
 
