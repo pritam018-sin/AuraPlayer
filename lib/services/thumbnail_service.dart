@@ -66,18 +66,18 @@ public class WindowsShellThumbnail
             int hr = SHCreateItemFromParsingName(filePath, IntPtr.Zero, uuid, out factory);
             if (hr != 0 || factory == null) return false;
 
-            // Try first with THUMBNAILONLY (0x08)
+            // STRICTLY use THUMBNAILONLY (0x08)
+            // NEVER fallback to 0x01 (RESIZETOFIT) which extracts VLC or system file icons!
             hr = factory.GetImage(new SIZE(width, height), 0x08, out hBitmap);
-            if (hr != 0 || hBitmap == IntPtr.Zero)
-            {
-                // Fallback to RESIZETOFIT | BIGGERSIZEOK (0x01)
-                hr = factory.GetImage(new SIZE(width, height), 0x01, out hBitmap);
-            }
-
             if (hr != 0 || hBitmap == IntPtr.Zero) return false;
 
             using (Bitmap bmp = Bitmap.FromHbitmap(hBitmap))
             {
+                // Ensure it is not a square icon (icons are typically 256x256, video thumbnails are 16:9 widescreen)
+                if (bmp.Width > 0 && bmp.Height > 0 && Math.Abs((float)bmp.Width / bmp.Height - 1.0f) < 0.15f)
+                {
+                    return false; // Reject square file icons
+                }
                 bmp.Save(outputPath, ImageFormat.Jpeg);
             }
             return true;
@@ -130,6 +130,15 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
       _cacheDir = Directory('${appDir.path}\\Thumbnails');
       if (!_cacheDir!.existsSync()) {
         _cacheDir!.createSync(recursive: true);
+      } else {
+        // Purge any legacy icon files (icons saved as thumbnails were <= 35KB)
+        try {
+          for (final f in _cacheDir!.listSync().whereType<File>()) {
+            if (f.lengthSync() < 36000) {
+              f.deleteSync();
+            }
+          }
+        } catch (_) {}
       }
 
       _scriptFile = File('${appDir.path}\\extract_thumb.ps1');
@@ -159,7 +168,7 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
     if (_cacheDir == null) return null;
     final filename = _safeFilename(videoPath);
     final file = File('${_cacheDir!.path}\\$filename');
-    if (file.existsSync() && file.lengthSync() > 100) {
+    if (file.existsSync() && file.lengthSync() > 36000) {
       return file;
     }
     return null;
@@ -220,7 +229,7 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
         runInShell: false,
       );
 
-      if (res.exitCode == 0 && outFile.existsSync() && outFile.lengthSync() > 100) {
+      if (res.exitCode == 0 && outFile.existsSync() && outFile.lengthSync() > 36000) {
         updateNotifier.value++;
         return outFile;
       }

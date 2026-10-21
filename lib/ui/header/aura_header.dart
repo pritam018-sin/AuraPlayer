@@ -13,6 +13,7 @@ import '../modals/media_info_modal.dart';
 import '../modals/open_network_modal.dart';
 import '../modals/shortcuts_guide_modal.dart';
 import '../modals/video_adjustments_modal.dart';
+import '../modals/cinema_studio_modal.dart';
 import '../player/audio_sub_sheet.dart';
 
 class AuraHeader extends ConsumerStatefulWidget {
@@ -477,6 +478,12 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
       ),
       onSelected: (val) async {
         switch (val) {
+          case 'studio_hud':
+            CinemaStudioModal.show(context, widget.playerWrapper);
+            break;
+          case 'vol_200':
+            widget.playerWrapper.setVolume(200.0);
+            break;
           case 'open_file':
             _openFile();
             break;
@@ -560,6 +567,10 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
       },
       itemBuilder: (ctx) => [
         // Section: Media & Playback
+        _headerMenuItem('PRO STUDIO SUITE'),
+        _menuRow('studio_hud', 'Cinema Studio Pro HUD (Full Suite)', 'I', CupertinoIcons.slider_horizontal_3),
+        const PopupMenuDivider(height: 1),
+
         _headerMenuItem('PLAYBACK & MEDIA'),
         _menuRow('play_pause', 'Play / Pause', 'Space', CupertinoIcons.play_arrow_solid),
         _menuRow('stop', 'Stop & Return to Library', 'S', CupertinoIcons.stop_fill),
@@ -572,11 +583,12 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
         // Section: Audio & Video
         _headerMenuItem('AUDIO & VIDEO TOOLS'),
         _menuRow('audio_sheet', 'Audio & Subtitle Tracks...', '', CupertinoIcons.captions_bubble_fill),
+        _menuRow('vol_200', 'Volume Boost 200% (VLC Max)', '', CupertinoIcons.volume_up),
         _menuRow('vol_150', 'Volume Boost 150%', '', CupertinoIcons.volume_up),
         _menuRow('mute', 'Mute / Unmute', 'M', CupertinoIcons.volume_off),
         _menuRow('ratio_16_9', 'Aspect Ratio: 16:9', '', CupertinoIcons.rectangle_split_3x1),
         _menuRow('ratio_21_9', 'Aspect Ratio: 21:9 Ultrawide', '', CupertinoIcons.rectangle_arrow_up_right_arrow_down_left),
-        _menuRow('adjustments', 'Video Adjustments & Filters...', '', CupertinoIcons.slider_horizontal_3),
+        _menuRow('adjustments', 'Video Adjustments & Filters...', '', CupertinoIcons.dial),
         _menuRow('snapshot', 'Take Snapshot / Frame Capture', 'Shift+S', CupertinoIcons.camera_fill),
         _menuRow('fullscreen', 'Toggle Fullscreen', 'F', CupertinoIcons.fullscreen),
         const PopupMenuDivider(height: 1),

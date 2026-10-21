@@ -16,6 +16,11 @@ class AuraPlayerWrapper {
   String? currentFilePath;
   String? currentTitle;
   Duration subtitleDelay = Duration.zero;
+  Duration audioDelay = Duration.zero;
+  Duration? loopA;
+  Duration? loopB;
+  Timer? _sleepTimer;
+  DateTime? sleepTimerTarget;
 
   // Video Adjustments
   double brightness = 0.0; // -100 to 100
@@ -39,7 +44,7 @@ class AuraPlayerWrapper {
     );
     videoController = VideoController(player);
 
-    // Apply resilient network properties for MPV live streaming
+    // Apply resilient network properties for MPV live streaming & hardware decode
     try {
       (player.platform as dynamic)?.setProperty(
         'user-agent',
@@ -53,12 +58,20 @@ class AuraPlayerWrapper {
       (player.platform as dynamic)?.setProperty('hls-bitrate', 'max');
     } catch (_) {}
 
-    // Save playback position periodically (only for offline videos)
+    // Save playback position periodically (only for offline videos) & enforce A-B loop
     _initPositionSaver();
   }
 
   void _initPositionSaver() {
     player.stream.position.listen((pos) {
+      // Enforce A-B loop repeat
+      if (loopA != null && loopB != null && loopB! > loopA!) {
+        if (pos >= loopB!) {
+          player.seek(loopA!);
+          return;
+        }
+      }
+
       final path = currentFilePath;
       // Never save live stream position
       if (path != null && !path.startsWith('http://') && !path.startsWith('https://')) {
@@ -77,6 +90,44 @@ class AuraPlayerWrapper {
         // Reset saved position if offline video reached the end
         storageService.setPosition(path, Duration.zero);
       }
+    });
+  }
+
+  void setLoopA() {
+    loopA = player.state.position;
+  }
+
+  void setLoopB() {
+    loopB = player.state.position;
+  }
+
+  void clearLoop() {
+    loopA = null;
+    loopB = null;
+  }
+
+  void stepFrameForward() {
+    try {
+      (player.platform as dynamic)?.command(['frame-step']);
+    } catch (_) {}
+  }
+
+  void stepFrameBackward() {
+    try {
+      (player.platform as dynamic)?.command(['frame-back-step']);
+    } catch (_) {}
+  }
+
+  void setSleepTimer(Duration? duration) {
+    _sleepTimer?.cancel();
+    if (duration == null) {
+      sleepTimerTarget = null;
+      return;
+    }
+    sleepTimerTarget = DateTime.now().add(duration);
+    _sleepTimer = Timer(duration, () {
+      pause();
+      sleepTimerTarget = null;
     });
   }
 
@@ -155,7 +206,7 @@ class AuraPlayerWrapper {
   }
 
   Future<void> setVolume(double vol) async {
-    final clamped = vol.clamp(0.0, 150.0);
+    final clamped = vol.clamp(0.0, 200.0);
     await player.setVolume(clamped);
     await storageService.setVolume(clamped);
   }
@@ -206,6 +257,36 @@ class AuraPlayerWrapper {
 
   void adjustSubtitleDelay(Duration delta) {
     subtitleDelay += delta;
+    try {
+      (player.platform as dynamic)?.setProperty(
+        'sub-delay',
+        (subtitleDelay.inMilliseconds / 1000.0).toString(),
+      );
+    } catch (_) {}
+  }
+
+  void resetSubtitleDelay() {
+    subtitleDelay = Duration.zero;
+    try {
+      (player.platform as dynamic)?.setProperty('sub-delay', '0');
+    } catch (_) {}
+  }
+
+  void adjustAudioDelay(Duration delta) {
+    audioDelay += delta;
+    try {
+      (player.platform as dynamic)?.setProperty(
+        'audio-delay',
+        (audioDelay.inMilliseconds / 1000.0).toString(),
+      );
+    } catch (_) {}
+  }
+
+  void resetAudioDelay() {
+    audioDelay = Duration.zero;
+    try {
+      (player.platform as dynamic)?.setProperty('audio-delay', '0');
+    } catch (_) {}
   }
 
   // Video Adjustments via mpv properties

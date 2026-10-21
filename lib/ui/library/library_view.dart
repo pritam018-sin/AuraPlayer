@@ -29,6 +29,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     '.mp4', '.mkv', '.avi', '.webm', '.mov', '.flv', '.wmv', '.ts', '.m4v'
   ];
 
+  String _sortMode = 'recent'; // 'recent', 'name_asc', 'name_desc', 'size_desc'
+  bool _isGridView = true;
+
   @override
   void initState() {
     super.initState();
@@ -118,7 +121,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
   }
 
   List<File> get _filteredFiles {
-    var list = _scannedFiles;
+    var list = [..._scannedFiles];
     if (_selectedFolder != null) {
       list = list.where((f) => f.path.startsWith(_selectedFolder!)).toList();
     }
@@ -126,6 +129,34 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     if (q.isNotEmpty) {
       list = list.where((f) => f.path.toLowerCase().contains(q)).toList();
     }
+
+    switch (_sortMode) {
+      case 'name_asc':
+        list.sort((a, b) => a.path.split(RegExp(r'[/\\]')).last.toLowerCase().compareTo(b.path.split(RegExp(r'[/\\]')).last.toLowerCase()));
+        break;
+      case 'name_desc':
+        list.sort((a, b) => b.path.split(RegExp(r'[/\\]')).last.toLowerCase().compareTo(a.path.split(RegExp(r'[/\\]')).last.toLowerCase()));
+        break;
+      case 'size_desc':
+        list.sort((a, b) {
+          int sa = 0, sb = 0;
+          try { sa = a.lengthSync(); } catch (_) {}
+          try { sb = b.lengthSync(); } catch (_) {}
+          return sb.compareTo(sa);
+        });
+        break;
+      case 'recent':
+      default:
+        list.sort((a, b) {
+          DateTime da = DateTime.fromMillisecondsSinceEpoch(0);
+          DateTime db = DateTime.fromMillisecondsSinceEpoch(0);
+          try { da = a.lastModifiedSync(); } catch (_) {}
+          try { db = b.lastModifiedSync(); } catch (_) {}
+          return db.compareTo(da);
+        });
+        break;
+    }
+
     return list;
   }
 
@@ -247,7 +278,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                   // 2. Folder Filter Chips (Horizontal List)
                   Expanded(
                     child: SizedBox(
-                      height: 36,
+                      height: 38,
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         children: [
@@ -350,6 +381,139 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                     ),
                                     Row(
                                       children: [
+                                        // Sort Dropdown Menu
+                                        PopupMenuButton<String>(
+                                          tooltip: 'Sort By',
+                                          color: AppTheme.surface.withValues(alpha: 0.95),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            side: const BorderSide(color: AppTheme.glassBorder),
+                                          ),
+                                          onSelected: (val) => setState(() => _sortMode = val),
+                                          itemBuilder: (ctx) => [
+                                            PopupMenuItem(
+                                              value: 'recent',
+                                              height: 32,
+                                              child: Row(
+                                                children: [
+                                                  Icon(CupertinoIcons.clock, size: 14, color: _sortMode == 'recent' ? AppTheme.accent : Colors.white70),
+                                                  const SizedBox(width: 8),
+                                                  Text('Recently Added', style: TextStyle(fontSize: 12.5, color: _sortMode == 'recent' ? AppTheme.accent : Colors.white)),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'name_asc',
+                                              height: 32,
+                                              child: Row(
+                                                children: [
+                                                  Icon(CupertinoIcons.sort_down, size: 14, color: _sortMode == 'name_asc' ? AppTheme.accent : Colors.white70),
+                                                  const SizedBox(width: 8),
+                                                  Text('Name (A to Z)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'name_asc' ? AppTheme.accent : Colors.white)),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'name_desc',
+                                              height: 32,
+                                              child: Row(
+                                                children: [
+                                                  Icon(CupertinoIcons.sort_up, size: 14, color: _sortMode == 'name_desc' ? AppTheme.accent : Colors.white70),
+                                                  const SizedBox(width: 8),
+                                                  Text('Name (Z to A)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'name_desc' ? AppTheme.accent : Colors.white)),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'size_desc',
+                                              height: 32,
+                                              child: Row(
+                                                children: [
+                                                  Icon(CupertinoIcons.arrow_down_circle, size: 14, color: _sortMode == 'size_desc' ? AppTheme.accent : Colors.white70),
+                                                  const SizedBox(width: 8),
+                                                  Text('File Size (Largest)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'size_desc' ? AppTheme.accent : Colors.white)),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.surfaceSecondary,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: AppTheme.glassBorder),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(CupertinoIcons.arrow_up_arrow_down, size: 13, color: AppTheme.accent),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  _sortMode == 'recent'
+                                                      ? 'Recent'
+                                                      : _sortMode == 'name_asc'
+                                                          ? 'Name A-Z'
+                                                          : _sortMode == 'name_desc'
+                                                              ? 'Name Z-A'
+                                                              : 'Size',
+                                                  style: AppTheme.caption.copyWith(fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Icon(CupertinoIcons.chevron_down, size: 10, color: AppTheme.textTertiary),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+
+                                        // Grid / List View Toggle
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.surfaceSecondary,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: AppTheme.glassBorder),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              InkWell(
+                                                onTap: () => setState(() => _isGridView = true),
+                                                borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(7),
+                                                  decoration: BoxDecoration(
+                                                    color: _isGridView ? AppTheme.accent.withValues(alpha: 0.25) : Colors.transparent,
+                                                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
+                                                  ),
+                                                  child: Icon(
+                                                    CupertinoIcons.square_grid_2x2,
+                                                    size: 15,
+                                                    color: _isGridView ? AppTheme.accent : AppTheme.textTertiary,
+                                                  ),
+                                                ),
+                                              ),
+                                              Container(width: 1, height: 16, color: AppTheme.glassBorder),
+                                              InkWell(
+                                                onTap: () => setState(() => _isGridView = false),
+                                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(7),
+                                                  decoration: BoxDecoration(
+                                                    color: !_isGridView ? AppTheme.accent.withValues(alpha: 0.25) : Colors.transparent,
+                                                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
+                                                  ),
+                                                  child: Icon(
+                                                    CupertinoIcons.list_bullet,
+                                                    size: 15,
+                                                    color: !_isGridView ? AppTheme.accent : AppTheme.textTertiary,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+
                                         ElevatedButton.icon(
                                           onPressed: () => _playAll(shuffle: false),
                                           icon: const Icon(CupertinoIcons.play_circle_fill, size: 16),
@@ -386,25 +550,42 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                               ),
                             ),
 
-                            // 3. 16:9 Cinematic Video Cards Grid
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(28, 4, 28, 32),
-                              sliver: SliverGrid(
-                                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 310,
-                                  mainAxisExtent: 235,
-                                  crossAxisSpacing: 18,
-                                  mainAxisSpacing: 18,
+                            // 3. Media Presentation (16:9 Grid or Pro Compact List)
+                            if (_isGridView)
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(28, 4, 28, 32),
+                                sliver: SliverGrid(
+                                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 310,
+                                    mainAxisExtent: 235,
+                                    crossAxisSpacing: 18,
+                                    mainAxisSpacing: 18,
+                                  ),
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final file = filtered[index];
+                                      return _videoCard(file);
+                                    },
+                                    childCount: filtered.length,
+                                  ),
                                 ),
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    final file = filtered[index];
-                                    return _videoCard(file);
-                                  },
-                                  childCount: filtered.length,
+                              )
+                            else
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(28, 4, 28, 32),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final file = filtered[index];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 8),
+                                        child: _videoListTile(file),
+                                      );
+                                    },
+                                    childCount: filtered.length,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
             ),
@@ -644,13 +825,14 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     VoidCallback? onDelete,
   }) {
     return Container(
-      margin: const EdgeInsets.only(right: 8, top: 7, bottom: 7),
+      margin: const EdgeInsets.only(right: 8),
+      alignment: Alignment.center,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
             gradient: isSelected ? AppTheme.auraGradient : null,
             color: isSelected ? null : AppTheme.surfaceSecondary,
@@ -675,7 +857,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                 label,
                 style: AppTheme.caption.copyWith(
                   color: isSelected ? const Color(0xFF04131F) : AppTheme.textSecondary,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                   fontSize: 12,
                 ),
               ),
@@ -1072,11 +1254,295 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     );
   }
 
+  Widget _videoListTile(File file) {
+    final storage = ref.read(storageServiceProvider);
+    final rawName = file.path.split(RegExp(r'[/\\]')).last;
+    final ext = rawName.contains('.') ? rawName.split('.').last.toUpperCase() : 'VIDEO';
+    final savedPos = storage.getPosition(file.path);
+
+    final cleanTitle = rawName.contains('.')
+        ? rawName.substring(0, rawName.lastIndexOf('.'))
+        : rawName;
+
+    int sizeBytes = 0;
+    try {
+      sizeBytes = file.lengthSync();
+    } catch (_) {}
+
+    final thumb = ThumbnailService.getCachedThumbnail(file.path);
+    if (thumb == null) {
+      ThumbnailService.generateThumbnail(file.path);
+    }
+
+    final parentDir = file.parent.path.split(RegExp(r'[/\\]')).last;
+
+    return FrostedGlass(
+      borderRadius: 12,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      fillColor: const Color(0xFF10121A).withValues(alpha: 0.75),
+      borderColor: AppTheme.glassBorder,
+      onTap: () {
+        ref.read(playlistProvider.notifier).addItem(
+              PlaylistItem(path: file.path, title: cleanTitle),
+              playImmediately: true,
+            );
+      },
+      child: Row(
+        children: [
+          // 1. Mini 16:9 Thumbnail (width 80, height 48)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 80,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: Color(0xFF141620),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (thumb != null)
+                    Image.file(
+                      thumb,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _fallbackThumb(),
+                    )
+                  else
+                    _fallbackThumb(),
+                  // Play Icon Overlay
+                  Center(
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(CupertinoIcons.play_fill, size: 12, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 14),
+
+          // 2. Format Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: AppTheme.glassBorder),
+            ),
+            child: Text(
+              ext,
+              style: AppTheme.caption.copyWith(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.accent,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // 3. Title & Path Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Tooltip(
+                  message: rawName,
+                  child: Text(
+                    cleanTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    const Icon(CupertinoIcons.folder, size: 11, color: AppTheme.textTertiary),
+                    const SizedBox(width: 4),
+                    Text(
+                      parentDir,
+                      style: AppTheme.caption.copyWith(color: AppTheme.textTertiary, fontSize: 11),
+                    ),
+                    if (savedPos.inSeconds > 5) ...[
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppTheme.accent.withValues(alpha: 0.5), width: 0.5),
+                        ),
+                        child: Text(
+                          'Resume ${_formatDuration(savedPos)}',
+                          style: AppTheme.caption.copyWith(
+                            color: AppTheme.accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // 4. File Size
+          Text(
+            _formatFileSize(sizeBytes),
+            style: AppTheme.caption.copyWith(
+              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+
+          const SizedBox(width: 14),
+
+          // 5. 3-Dots Menu
+          PopupMenuButton<String>(
+            tooltip: 'Options',
+            color: AppTheme.surface.withValues(alpha: 0.95),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppTheme.glassBorder),
+            ),
+            onSelected: (val) async {
+              if (val == 'play') {
+                ref.read(playlistProvider.notifier).addItem(
+                      PlaylistItem(path: file.path, title: cleanTitle),
+                      playImmediately: true,
+                    );
+              } else if (val == 'restart') {
+                storage.setPosition(file.path, Duration.zero);
+                ref.read(playlistProvider.notifier).addItem(
+                      PlaylistItem(path: file.path, title: cleanTitle),
+                      playImmediately: true,
+                    );
+              } else if (val == 'queue') {
+                ref.read(playlistProvider.notifier).addItem(
+                      PlaylistItem(path: file.path, title: cleanTitle),
+                      playImmediately: false,
+                    );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added to playlist: $cleanTitle'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else if (val == 'explorer') {
+                Process.run('explorer.exe', ['/select,', file.path]);
+              } else if (val == 'copy') {
+                final sm = ScaffoldMessenger.of(context);
+                await Clipboard.setData(ClipboardData(text: file.path));
+                sm.showSnackBar(
+                  const SnackBar(
+                    content: Text('File path copied to clipboard'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'play',
+                height: 32,
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.play_fill, size: 14, color: AppTheme.accent),
+                    SizedBox(width: 8),
+                    Text('Play Now', style: TextStyle(fontSize: 12.5)),
+                  ],
+                ),
+              ),
+              if (savedPos.inSeconds > 5)
+                const PopupMenuItem(
+                  value: 'restart',
+                  height: 32,
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.arrow_counterclockwise, size: 14, color: Colors.white70),
+                      SizedBox(width: 8),
+                      Text('Play from Start', style: TextStyle(fontSize: 12.5)),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'queue',
+                height: 32,
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.plus_circle, size: 14, color: Colors.white70),
+                    SizedBox(width: 8),
+                    Text('Add to Queue', style: TextStyle(fontSize: 12.5)),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(height: 1),
+              const PopupMenuItem(
+                value: 'explorer',
+                height: 32,
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.folder, size: 14, color: Colors.white70),
+                    SizedBox(width: 8),
+                    Text('Show in Explorer', style: TextStyle(fontSize: 12.5)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'copy',
+                height: 32,
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.doc_on_clipboard, size: 14, color: Colors.white70),
+                    SizedBox(width: 8),
+                    Text('Copy Path', style: TextStyle(fontSize: 12.5)),
+                  ],
+                ),
+              ),
+            ],
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.4),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+              ),
+              child: const Center(
+                child: Icon(CupertinoIcons.ellipsis, size: 13, color: Colors.white70),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _fallbackThumb() {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF1E1E28), Color(0xFF12121A)],
+          colors: [Color(0xFF141620), Color(0xFF090A0F)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1085,18 +1551,36 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              CupertinoIcons.film,
-              size: 32,
-              color: Colors.white.withValues(alpha: 0.25),
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.accent.withValues(alpha: 0.35),
+                    blurRadius: 18,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.asset(
+                  'assets/app_icon.png',
+                  width: 50,
+                  height: 50,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               'AURA CINEMA',
               style: AppTheme.caption.copyWith(
-                fontSize: 9,
-                letterSpacing: 1.2,
-                color: Colors.white24,
+                fontSize: 9.5,
+                letterSpacing: 1.4,
+                color: Colors.white38,
                 fontWeight: FontWeight.w700,
               ),
             ),

@@ -6,6 +6,7 @@ import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
 import 'audio_sub_sheet.dart';
 import 'seek_bar.dart';
+import '../modals/cinema_studio_modal.dart';
 
 class FloatingControls extends ConsumerStatefulWidget {
   final AuraPlayerWrapper playerWrapper;
@@ -379,6 +380,16 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                 icon: CupertinoIcons.captions_bubble,
                                                 size: 18,
                                                 onTap: () => AudioSubtitleSheet.show(context, widget.playerWrapper),
+                                              ),
+
+                                              const SizedBox(width: 4),
+
+                                              // Cinema Studio Pro Inspector HUD
+                                              _iconButton(
+                                                tooltip: 'Cinema Studio Pro Inspector (I)',
+                                                icon: CupertinoIcons.slider_horizontal_3,
+                                                size: 18,
+                                                onTap: () => CinemaStudioModal.show(context, widget.playerWrapper),
                                               ),
 
                                               const SizedBox(width: 4),

@@ -12,6 +12,7 @@ import '../../state/player_provider.dart';
 import '../header/aura_header.dart';
 import '../modals/media_info_modal.dart';
 import '../modals/open_network_modal.dart';
+import '../modals/cinema_studio_modal.dart';
 import 'context_menu.dart';
 import 'floating_controls.dart';
 import 'playlist_drawer.dart';
@@ -170,7 +171,14 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
       case LogicalKeyboardKey.keyI:
         if (isControl) {
           MediaInfoModal.show(context, widget.playerWrapper);
+        } else {
+          CinemaStudioModal.show(context, widget.playerWrapper);
         }
+        _onUserActivity();
+        break;
+      case LogicalKeyboardKey.keyE:
+        widget.playerWrapper.stepFrameForward();
+        _onUserActivity();
         break;
     }
   }
