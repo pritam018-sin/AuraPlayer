@@ -293,9 +293,15 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                       );
                     },
                     child: Center(
-                      child: Video(
-                        controller: widget.playerWrapper.videoController,
-                        controls: NoVideoControls,
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: widget.playerWrapper.subtitleConfigRevision,
+                        builder: (context, rev, child) {
+                          return Video(
+                            controller: widget.playerWrapper.videoController,
+                            controls: NoVideoControls,
+                            subtitleViewConfiguration: widget.playerWrapper.subtitleViewConfiguration,
+                          );
+                        },
                       ),
                     ),
                   ),

@@ -279,7 +279,10 @@ class AuraPlayerWrapper {
 
   Future<void> setAudioTrack(AudioTrack track) => player.setAudioTrack(track);
 
-  Future<void> setSubtitleTrack(SubtitleTrack track) => player.setSubtitleTrack(track);
+  Future<void> setSubtitleTrack(SubtitleTrack track) async {
+    await player.setSubtitleTrack(track);
+    subtitleConfigRevision.value++;
+  }
 
   Future<void> loadExternalSubtitle(String srtOrAssPath) async {
     final customSub = SubtitleTrack.uri(
@@ -287,6 +290,7 @@ class AuraPlayerWrapper {
       title: srtOrAssPath.split(RegExp(r'[/\\]')).last,
     );
     await player.setSubtitleTrack(customSub);
+    subtitleConfigRevision.value++;
   }
 
   void adjustSubtitleDelay(Duration delta) {
@@ -307,16 +311,57 @@ class AuraPlayerWrapper {
   }
 
   // --- SUBTITLE CUSTOMIZATION SUITE ---
+  final ValueNotifier<int> subtitleConfigRevision = ValueNotifier<int>(0);
+
   Color subColor = const Color(0xFFFFFFFF);
-  double subFontSize = 48.0;
+  double subFontSize = 44.0;
   String subFontFamily = 'Segoe UI';
   String subBgMode = 'none'; // 'none', 'glass', 'opaque'
   bool subBold = false;
   double subBorderSize = 2.5;
   int subPosition = 100; // 0 to 100
 
+  SubtitleViewConfiguration get subtitleViewConfiguration {
+    Color bgColor;
+    List<Shadow>? textShadows;
+    if (subBgMode == 'none') {
+      bgColor = Colors.transparent;
+      textShadows = const [
+        Shadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 4),
+        Shadow(color: Colors.black, offset: Offset(-2, -2), blurRadius: 4),
+        Shadow(color: Colors.black, offset: Offset(2, -2), blurRadius: 4),
+        Shadow(color: Colors.black, offset: Offset(-2, 2), blurRadius: 4),
+      ];
+    } else if (subBgMode == 'glass') {
+      bgColor = const Color(0x99000000);
+      textShadows = const [
+        Shadow(color: Colors.black, offset: Offset(1, 1), blurRadius: 2),
+      ];
+    } else {
+      bgColor = const Color(0xEE000000);
+      textShadows = null;
+    }
+
+    final double padBottom = ((100 - subPosition) * 3.0 + 28.0).clamp(16.0, 300.0);
+
+    return SubtitleViewConfiguration(
+      visible: player.state.track.subtitle.id != 'no',
+      style: TextStyle(
+        color: subColor,
+        fontSize: subFontSize,
+        fontFamily: subFontFamily,
+        fontWeight: subBold ? FontWeight.bold : FontWeight.w600,
+        backgroundColor: bgColor,
+        shadows: textShadows,
+        height: 1.35,
+      ),
+      padding: EdgeInsets.fromLTRB(24.0, 0.0, 24.0, padBottom),
+    );
+  }
+
   void setSubtitleColor(Color color) {
     subColor = color;
+    subtitleConfigRevision.value++;
     final hex = '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
     try {
       (player.platform as dynamic)?.setProperty('sub-color', hex);
@@ -325,6 +370,7 @@ class AuraPlayerWrapper {
 
   void setSubtitleFontSize(double size) {
     subFontSize = size;
+    subtitleConfigRevision.value++;
     try {
       (player.platform as dynamic)?.setProperty('sub-font-size', size.toInt().toString());
     } catch (_) {}
@@ -332,6 +378,7 @@ class AuraPlayerWrapper {
 
   void setSubtitleFontFamily(String font) {
     subFontFamily = font;
+    subtitleConfigRevision.value++;
     try {
       (player.platform as dynamic)?.setProperty('sub-font', font);
     } catch (_) {}
@@ -339,6 +386,7 @@ class AuraPlayerWrapper {
 
   void setSubtitleBgMode(String mode) {
     subBgMode = mode;
+    subtitleConfigRevision.value++;
     try {
       if (mode == 'none') {
         (player.platform as dynamic)?.setProperty('sub-back-color', '#00000000');
@@ -352,6 +400,7 @@ class AuraPlayerWrapper {
 
   void setSubtitleBold(bool bold) {
     subBold = bold;
+    subtitleConfigRevision.value++;
     try {
       (player.platform as dynamic)?.setProperty('sub-bold', bold ? 'yes' : 'no');
     } catch (_) {}
@@ -359,6 +408,7 @@ class AuraPlayerWrapper {
 
   void setSubtitleBorderSize(double size) {
     subBorderSize = size;
+    subtitleConfigRevision.value++;
     try {
       (player.platform as dynamic)?.setProperty('sub-border-size', size.toStringAsFixed(1));
     } catch (_) {}
@@ -366,6 +416,7 @@ class AuraPlayerWrapper {
 
   void setSubtitlePosition(int pos) {
     subPosition = pos.clamp(0, 100);
+    subtitleConfigRevision.value++;
     try {
       (player.platform as dynamic)?.setProperty('sub-pos', subPosition.toString());
     } catch (_) {}
@@ -373,15 +424,16 @@ class AuraPlayerWrapper {
 
   void resetSubtitleAppearance() {
     subColor = const Color(0xFFFFFFFF);
-    subFontSize = 48.0;
+    subFontSize = 44.0;
     subFontFamily = 'Segoe UI';
     subBgMode = 'none';
     subBold = false;
     subBorderSize = 2.5;
     subPosition = 100;
+    subtitleConfigRevision.value++;
     try {
       (player.platform as dynamic)?.setProperty('sub-color', '#FFFFFF');
-      (player.platform as dynamic)?.setProperty('sub-font-size', '48');
+      (player.platform as dynamic)?.setProperty('sub-font-size', '44');
       (player.platform as dynamic)?.setProperty('sub-font', 'Segoe UI');
       (player.platform as dynamic)?.setProperty('sub-back-color', '#00000000');
       (player.platform as dynamic)?.setProperty('sub-bold', 'no');
