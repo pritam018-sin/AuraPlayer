@@ -76,6 +76,7 @@ Copy-Item -Path "$projectRoot\register.bat" -Destination "$portableFolder\regist
 Copy-Item -Path "$projectRoot\unregister.bat" -Destination "$portableFolder\unregister.bat" -Force
 Copy-Item -Path "$projectRoot\register_windows_app.ps1" -Destination "$portableFolder\register_windows_app.ps1" -Force
 Copy-Item -Path "$projectRoot\unregister_windows_app.ps1" -Destination "$portableFolder\unregister_windows_app.ps1" -Force
+Copy-Item -Path "$projectRoot\windows\extract_thumb.ps1" -Destination "$portableFolder\extract_thumb.ps1" -Force
 Copy-Item -Path "$projectRoot\LICENSE" -Destination "$portableFolder\LICENSE" -Force
 
 $iconSrc = "$projectRoot\windows\runner\resources\app_icon.ico"

@@ -8,6 +8,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'player/player_models.dart';
+import 'services/thumbnail_service.dart';
 import 'settings/storage_service.dart';
 import 'state/player_provider.dart';
 import 'theme/app_theme.dart';
@@ -52,8 +53,9 @@ Future<void> main(List<String> args) async {
     await windowManager.focus();
   });
 
-  // Initialize Persistent Storage
+  // Initialize Persistent Storage & Thumbnail Cache
   final storageService = await StorageService.init();
+  await ThumbnailService.init();
 
   runApp(
     ProviderScope(

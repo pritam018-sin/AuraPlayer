@@ -89,9 +89,12 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                           builder: (context, rateSnap) {
                             final rate = rateSnap.data ?? 1.0;
 
-                            final timeDisplay = _showRemainingTime
-                                ? '-${_formatDuration(duration - position)} / ${_formatDuration(duration)}'
-                                : '${_formatDuration(position)} / ${_formatDuration(duration)}';
+                            final isLive = widget.playerWrapper.isLiveStream;
+                            final timeDisplay = isLive
+                                ? '● LIVE'
+                                : (_showRemainingTime
+                                    ? '-${_formatDuration(duration - position)} / ${_formatDuration(duration)}'
+                                    : '${_formatDuration(position)} / ${_formatDuration(duration)}');
 
                             return AnimatedOpacity(
                               duration: const Duration(milliseconds: 240),
@@ -108,11 +111,12 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Seek Bar with hover timestamp
+                                        // Seek Bar with draggable radio button thumb and live indicator
                                         CustomSeekBar(
                                           position: position,
                                           duration: duration,
                                           buffer: buffer,
+                                          isLive: isLive,
                                           onSeek: (pos) => widget.playerWrapper.seek(pos),
                                         ),
 

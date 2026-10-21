@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../player/player_models.dart';
+import '../../services/thumbnail_service.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/frosted_glass.dart';
@@ -31,11 +32,17 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
   @override
   void initState() {
     super.initState();
+    ThumbnailService.updateNotifier.addListener(_onThumbnailsUpdated);
     _scanAllImportedFolders();
+  }
+
+  void _onThumbnailsUpdated() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    ThumbnailService.updateNotifier.removeListener(_onThumbnailsUpdated);
     _searchController.dispose();
     super.dispose();
   }
@@ -67,6 +74,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
       _scannedFiles = files;
       _isLoading = false;
     });
+
+    // Batch extract thumbnails in background for all scanned videos
+    if (files.isNotEmpty) {
+      ThumbnailService.batchGenerateThumbnails(files.map((f) => f.path).toList());
+    }
   }
 
   Future<void> _importFolder() async {
@@ -412,6 +424,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
       sizeBytes = file.lengthSync();
     } catch (_) {}
 
+    final thumb = ThumbnailService.getCachedThumbnail(file.path);
+    if (thumb == null) {
+      ThumbnailService.generateThumbnail(file.path);
+    }
+
     return FrostedGlass(
       borderRadius: 14,
       padding: EdgeInsets.zero,
@@ -425,7 +442,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thumbnail Preview Box with Format Badge
+          // Thumbnail Preview Box with Format Badge & Real Video Frame
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -433,22 +450,58 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
               ),
               child: Stack(
-                alignment: Alignment.center,
+                fit: StackFit.expand,
                 children: [
+                  // Real extracted video thumbnail frame
+                  if (thumb != null) ...[
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                      child: Image.file(
+                        thumb,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _fallbackThumb(),
+                      ),
+                    ),
+                    // High-contrast gradient overlay so badges and text are crisp
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.2),
+                            Colors.black.withValues(alpha: 0.65),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    _fallbackThumb(),
+                  ],
+
+                  // Frosted Center Play Button
                   Center(
                     child: Container(
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.black.withValues(alpha: 0.45),
+                        color: Colors.black.withValues(alpha: 0.5),
                         border: Border.all(color: AppTheme.glassBorder),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                          ),
+                        ],
                       ),
                       child: const Center(
                         child: Icon(CupertinoIcons.play_fill, size: 20, color: AppTheme.accent),
                       ),
                     ),
                   ),
+
                   // Format Badge (e.g. MKV, MP4)
                   Positioned(
                     top: 8,
@@ -456,7 +509,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
+                        color: Colors.black.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(color: AppTheme.glassBorder),
                       ),
@@ -470,6 +523,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                       ),
                     ),
                   ),
+
                   // File Size Badge
                   if (sizeBytes > 0)
                     Positioned(
@@ -478,7 +532,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
+                          color: Colors.black.withValues(alpha: 0.75),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -570,6 +624,22 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackThumb() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceTertiary,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+      ),
+      child: Center(
+        child: Icon(
+          CupertinoIcons.film,
+          size: 36,
+          color: AppTheme.textTertiary.withValues(alpha: 0.4),
         ),
       ),
     );

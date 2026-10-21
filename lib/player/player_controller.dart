@@ -23,6 +23,12 @@ class AuraPlayerWrapper {
   double gamma = 0.0;      // -100 to 100
   String? currentAspectRatio; // null, "16:9", "4:3", "21:9", "1:1"
 
+  bool get isLiveStream {
+    final path = currentFilePath;
+    if (path == null) return false;
+    return path.startsWith('http://') || path.startsWith('https://');
+  }
+
   AuraPlayerWrapper({required this.storageService}) {
     player = Player(
       configuration: const PlayerConfiguration(
@@ -32,42 +38,78 @@ class AuraPlayerWrapper {
     );
     videoController = VideoController(player);
 
-    // Save playback position periodically
+    // Apply resilient network properties for MPV live streaming
+    try {
+      (player.platform as dynamic)?.setProperty(
+        'user-agent',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      );
+      (player.platform as dynamic)?.setProperty(
+        'demuxer-lavf-o',
+        'protocol_whitelist=file,http,https,tcp,tls,crypto',
+      );
+      (player.platform as dynamic)?.setProperty('network-timeout', '10');
+      (player.platform as dynamic)?.setProperty('hls-bitrate', 'max');
+    } catch (_) {}
+
+    // Save playback position periodically (only for offline videos)
     _initPositionSaver();
   }
 
   void _initPositionSaver() {
     player.stream.position.listen((pos) {
       final path = currentFilePath;
-      if (path != null && pos.inSeconds > 2) {
-        storageService.setPosition(path, pos);
+      // Never save live stream position
+      if (path != null && !path.startsWith('http://') && !path.startsWith('https://')) {
+        if (pos.inSeconds > 2) {
+          storageService.setPosition(path, pos);
+        }
       }
     });
 
     player.stream.completed.listen((completed) {
-      if (completed && currentFilePath != null) {
-        // Reset saved position if video reached the end
-        storageService.setPosition(currentFilePath!, Duration.zero);
+      final path = currentFilePath;
+      if (completed && path != null && !path.startsWith('http://') && !path.startsWith('https://')) {
+        // Reset saved position if offline video reached the end
+        storageService.setPosition(path, Duration.zero);
       }
     });
   }
 
   Future<void> openFile(String path, {String? title}) async {
+    final isNetwork = path.startsWith('http://') || path.startsWith('https://');
     currentFilePath = path;
-    currentTitle = title ?? path.split(RegExp(r'[/\\]')).last;
+    currentTitle = title ??
+        (isNetwork
+            ? path.split('/').last.split('?').first
+            : path.split(RegExp(r'[/\\]')).last);
+    if (currentTitle == null || currentTitle!.isEmpty) {
+      currentTitle = isNetwork ? 'Live Stream' : 'Video';
+    }
 
-    // Check last saved position
-    final lastPos = storageService.getPosition(path);
+    // Only resume saved position for offline local files, never for live streams
+    final lastPos = isNetwork ? Duration.zero : storageService.getPosition(path);
 
     await player.open(
-      Media(path),
+      Media(
+        path,
+        httpHeaders: isNetwork
+            ? {
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+              }
+            : null,
+      ),
       play: true,
     );
 
-    // Resume position if greater than 3 seconds
-    if (lastPos.inSeconds > 3) {
-      Future.delayed(const Duration(milliseconds: 400), () {
-        player.seek(lastPos);
+    // Resume position if greater than 3 seconds (ONLY offline local files)
+    if (!isNetwork && lastPos.inSeconds > 3) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (currentFilePath == path) {
+          player.seek(lastPos);
+        }
       });
     }
 
@@ -77,33 +119,14 @@ class AuraPlayerWrapper {
         path: path,
         title: currentTitle ?? 'Video',
         position: lastPos,
-        duration: player.state.duration,
+        duration: isNetwork ? Duration.zero : player.state.duration,
         lastPlayed: DateTime.now(),
       ),
     );
   }
 
   Future<void> openUrl(String url, {String? title}) async {
-    currentFilePath = url;
-    currentTitle = title ?? url.split('/').last.split('?').first;
-    if (currentTitle == null || currentTitle!.isEmpty) {
-      currentTitle = 'Network Stream';
-    }
-
-    await player.open(
-      Media(url),
-      play: true,
-    );
-
-    storageService.addRecentFile(
-      RecentItem(
-        path: url,
-        title: currentTitle!,
-        position: Duration.zero,
-        duration: Duration.zero,
-        lastPlayed: DateTime.now(),
-      ),
-    );
+    await openFile(url, title: title);
   }
 
   Future<void> play() => player.play();
