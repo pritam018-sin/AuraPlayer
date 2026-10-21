@@ -1121,19 +1121,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.72),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.0),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.4),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Center(
-                              child: Icon(Icons.more_vert_rounded, size: 16, color: Colors.white),
+                              child: Icon(Icons.more_vert, size: 20, color: Colors.white),
                             ),
                           ),
                         ),
@@ -1532,11 +1524,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
               height: 28,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: const Center(
-                child: Icon(Icons.more_vert_rounded, size: 16, color: Colors.white70),
+                child: Icon(Icons.more_vert, size: 20, color: Colors.white70),
               ),
             ),
           ),
