@@ -266,13 +266,19 @@ class WindowControlsNotifier extends Notifier<WindowControlsState> {
   Future<void> toggleMiniMode() async {
     final next = !state.isMiniMode;
     if (next) {
+      if (state.isFullscreen) {
+        await windowManager.setFullScreen(false);
+      }
       await windowManager.setAlwaysOnTop(true);
+      await windowManager.setMinimumSize(const Size(320, 180));
       await windowManager.setSize(const Size(440, 250));
     } else {
       await windowManager.setAlwaysOnTop(state.isAlwaysOnTop);
+      await windowManager.setMinimumSize(const Size(800, 500));
       await windowManager.setSize(const Size(1280, 720));
+      await windowManager.center();
     }
-    state = state.copyWith(isMiniMode: next);
+    state = state.copyWith(isMiniMode: next, isFullscreen: false);
   }
 
   void togglePlaylist() {

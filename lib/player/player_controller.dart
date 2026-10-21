@@ -323,6 +323,78 @@ class AuraPlayerWrapper {
     } catch (_) {}
   }
 
+  // Studio Equalizer & Night Mode (Dialogue Clarity & Dynamic Range Compression)
+  bool isNightMode = false;
+  String currentEqPreset = 'Flat';
+  List<double> eqGains = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  static const List<String> eqBands = [
+    '31Hz', '62Hz', '125Hz', '250Hz', '500Hz', '1kHz', '2kHz', '4kHz', '8kHz', '16kHz'
+  ];
+  static const List<double> eqFrequencies = [
+    31.25, 62.5, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0
+  ];
+
+  static const Map<String, List<double>> eqPresets = {
+    'Flat': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    'Bass Boost': [6.0, 5.0, 4.0, 2.5, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    'Vocal Clarity': [-3.0, -2.0, 0.0, 2.0, 4.0, 4.5, 3.5, 2.0, 1.0, 0.0],
+    'Movie Cinema': [4.0, 3.0, 1.5, 0.0, 0.0, 1.5, 2.5, 3.5, 4.0, 4.5],
+    'Rock': [4.5, 3.0, 2.0, -1.0, -1.5, 1.0, 3.0, 4.0, 4.5, 5.0],
+    'Pop': [-1.5, 1.0, 3.0, 4.0, 3.5, 1.5, -1.0, -1.5, -1.0, -1.5],
+    'Electronic': [5.0, 4.0, 2.0, 0.0, -2.0, 2.0, 1.5, 2.5, 4.0, 4.5],
+    'Classical': [4.0, 3.0, 2.5, 2.0, -1.5, -1.5, 0.0, 2.0, 3.0, 3.5],
+  };
+
+  void toggleNightMode() {
+    isNightMode = !isNightMode;
+    _applyAudioFilters();
+  }
+
+  void setEqPreset(String name) {
+    if (eqPresets.containsKey(name)) {
+      currentEqPreset = name;
+      eqGains = List<double>.from(eqPresets[name]!);
+      _applyAudioFilters();
+    }
+  }
+
+  void setEqBand(int index, double gain) {
+    if (index >= 0 && index < eqGains.length) {
+      eqGains[index] = gain.clamp(-12.0, 12.0);
+      currentEqPreset = 'Custom';
+      _applyAudioFilters();
+    }
+  }
+
+  void resetEq() {
+    currentEqPreset = 'Flat';
+    eqGains = List<double>.filled(10, 0.0);
+    _applyAudioFilters();
+  }
+
+  void _applyAudioFilters() {
+    final filters = <String>[];
+    if (isNightMode) {
+      // Dynamic range compressor for dialogue enhancement and preventing ear-splitting explosions
+      filters.add('acompressor=threshold=-24dB:ratio=4:attack=200:release=1000');
+    }
+    final hasEq = eqGains.any((g) => g.abs() > 0.05);
+    if (hasEq) {
+      final eqParams = <String>[];
+      for (int i = 0; i < eqGains.length; i++) {
+        final f = eqFrequencies[i];
+        final g = eqGains[i].toStringAsFixed(1);
+        eqParams.add('equalizer=f=$f:width_type=o:w=1:g=$g');
+      }
+      filters.add(eqParams.join(','));
+    }
+
+    try {
+      final afString = filters.join(',');
+      (player.platform as dynamic)?.setProperty('af', afString);
+    } catch (_) {}
+  }
+
   // Video Adjustments via mpv properties
   void setBrightness(double value) {
     brightness = value;

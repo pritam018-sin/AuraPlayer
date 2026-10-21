@@ -167,7 +167,27 @@ class AuraPlayerHome extends ConsumerWidget {
                 isVisible: true,
               ),
               Expanded(
-                child: _buildActiveTabContent(ref, activeTab),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.0, 0.02),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey<AuraTab>(activeTab),
+                    child: _buildActiveTabContent(ref, activeTab),
+                  ),
+                ),
               ),
             ],
           ),

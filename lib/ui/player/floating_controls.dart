@@ -425,6 +425,20 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
 
                                               const SizedBox(width: 4),
 
+                                              // Picture-in-Picture (PiP)
+                                              _iconButton(
+                                                tooltip: windowState.isMiniMode
+                                                    ? 'Exit Picture-in-Picture'
+                                                    : 'Picture-in-Picture (PiP)',
+                                                icon: windowState.isMiniMode
+                                                    ? CupertinoIcons.arrow_up_right_square_fill
+                                                    : CupertinoIcons.rectangle_on_rectangle,
+                                                size: 18,
+                                                onTap: () => windowNotifier.toggleMiniMode(),
+                                              ),
+
+                                              const SizedBox(width: 4),
+
                                               // Fullscreen Toggle
                                               _iconButton(
                                                 tooltip: windowState.isFullscreen ? 'Exit Fullscreen (Esc)' : 'Fullscreen (F)',

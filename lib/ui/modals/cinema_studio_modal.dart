@@ -481,6 +481,186 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
           const Divider(color: AppTheme.glassBorder, height: 1),
           const SizedBox(height: 16),
 
+          // Night Mode (Dialogue Clarity & Dynamic Range Compression)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceSecondary.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: wrapper.isNightMode ? AppTheme.accent.withValues(alpha: 0.5) : AppTheme.glassBorder,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.moon_stars_fill,
+                            size: 14,
+                            color: wrapper.isNightMode ? AppTheme.accent : Colors.white70,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'NIGHT MODE (DIALOGUE CLARITY & DRC)',
+                            style: AppTheme.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: wrapper.isNightMode ? AppTheme.accent : Colors.white,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Boosts quiet dialogues & softens loud explosions for night viewing without disturbing others.',
+                        style: AppTheme.caption.copyWith(fontSize: 11, color: AppTheme.textTertiary),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                CupertinoSwitch(
+                  value: wrapper.isNightMode,
+                  activeTrackColor: AppTheme.accent,
+                  onChanged: (val) {
+                    wrapper.toggleNightMode();
+                    setState(() {});
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          const Divider(color: AppTheme.glassBorder, height: 1),
+          const SizedBox(height: 16),
+
+          // 10-Band Studio Equalizer
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _sectionHeader('10-BAND STUDIO EQUALIZER', wrapper.currentEqPreset),
+              if (wrapper.currentEqPreset != 'Flat')
+                GestureDetector(
+                  onTap: () {
+                    wrapper.resetEq();
+                    setState(() {});
+                  },
+                  child: Text(
+                    'Reset EQ',
+                    style: AppTheme.caption.copyWith(
+                      color: AppTheme.accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // EQ Preset Chips
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: AuraPlayerWrapper.eqPresets.keys.map((preset) {
+              final isSel = wrapper.currentEqPreset == preset;
+              return InkWell(
+                onTap: () {
+                  wrapper.setEqPreset(preset);
+                  setState(() {});
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                  decoration: BoxDecoration(
+                    color: isSel ? AppTheme.accent : AppTheme.surfaceSecondary,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: isSel ? Colors.transparent : AppTheme.glassBorder),
+                  ),
+                  child: Text(
+                    preset,
+                    style: AppTheme.caption.copyWith(
+                      color: isSel ? const Color(0xFF04131F) : Colors.white70,
+                      fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
+
+          // 10 Band Vertical Sliders Grid
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceSecondary.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.glassBorder),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(10, (idx) {
+                final bandLabel = AuraPlayerWrapper.eqBands[idx];
+                final gain = wrapper.eqGains[idx];
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${gain > 0 ? '+' : ''}${gain.toStringAsFixed(0)}',
+                      style: AppTheme.caption.copyWith(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: gain != 0 ? AppTheme.accent : Colors.white38,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 100,
+                      width: 24,
+                      child: RotatedBox(
+                        quarterTurns: 3,
+                        child: SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 2.5,
+                            activeTrackColor: AppTheme.accent,
+                            inactiveTrackColor: Colors.white12,
+                            thumbColor: gain != 0 ? AppTheme.accent : Colors.white60,
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
+                          ),
+                          child: Slider(
+                            value: gain,
+                            min: -12.0,
+                            max: 12.0,
+                            onChanged: (v) {
+                              wrapper.setEqBand(idx, v);
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      bandLabel,
+                      style: AppTheme.caption.copyWith(fontSize: 8.5, color: Colors.white60),
+                    ),
+                  ],
+                );
+              }),
+            ),
+          ),
+
+          const SizedBox(height: 22),
+          const Divider(color: AppTheme.glassBorder, height: 1),
+          const SizedBox(height: 16),
+
           // Audio Tracks
           _sectionHeader('SELECT AUDIO TRACK', '${tracks.length} tracks detected'),
           const SizedBox(height: 10),
