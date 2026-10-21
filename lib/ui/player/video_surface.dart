@@ -13,6 +13,7 @@ import '../header/aura_header.dart';
 import '../modals/media_info_modal.dart';
 import '../modals/open_network_modal.dart';
 import '../modals/cinema_studio_modal.dart';
+import 'aura_loading_overlay.dart';
 import 'context_menu.dart';
 import 'floating_controls.dart';
 import 'playlist_drawer.dart';
@@ -251,6 +252,13 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                         controls: NoVideoControls,
                       ),
                     ),
+                  ),
+                ),
+
+                // Cinematic AuraPlayer Logo Loading & Buffering Overlay
+                Positioned.fill(
+                  child: AuraLoadingOverlay(
+                    playerWrapper: widget.playerWrapper,
                   ),
                 ),
 

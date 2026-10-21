@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,6 +22,11 @@ class AuraPlayerWrapper {
   Duration? loopB;
   Timer? _sleepTimer;
   DateTime? sleepTimerTarget;
+
+  // Video ready & buffering status notifiers for cinematic loading animations
+  final ValueNotifier<bool> isVideoReadyNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> isBufferingNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<String?> streamErrorNotifier = ValueNotifier<String?>(null);
 
   // Video Adjustments
   double brightness = 0.0; // -100 to 100
@@ -63,7 +69,27 @@ class AuraPlayerWrapper {
   }
 
   void _initPositionSaver() {
+    player.stream.width.listen((w) {
+      if (w != null && w > 0) {
+        isVideoReadyNotifier.value = true;
+      }
+    });
+
+    player.stream.buffering.listen((buffering) {
+      isBufferingNotifier.value = buffering;
+    });
+
+    player.stream.error.listen((err) {
+      if (err.isNotEmpty) {
+        streamErrorNotifier.value = err;
+      }
+    });
+
     player.stream.position.listen((pos) {
+      if (pos > const Duration(milliseconds: 250)) {
+        isVideoReadyNotifier.value = true;
+      }
+
       // Enforce A-B loop repeat
       if (loopA != null && loopB != null && loopB! > loopA!) {
         if (pos >= loopB!) {
@@ -142,6 +168,11 @@ class AuraPlayerWrapper {
       currentTitle = isNetwork ? 'Live Stream' : 'Video';
     }
 
+    // Trigger instant loading animation state
+    isVideoReadyNotifier.value = false;
+    isBufferingNotifier.value = true;
+    streamErrorNotifier.value = null;
+
     // Only resume saved position for offline local files, never for live streams
     final lastPos = isNetwork ? Duration.zero : storageService.getPosition(path);
 
@@ -191,6 +222,9 @@ class AuraPlayerWrapper {
   Future<void> stop() async {
     currentFilePath = null;
     currentTitle = null;
+    isVideoReadyNotifier.value = false;
+    isBufferingNotifier.value = false;
+    streamErrorNotifier.value = null;
     await player.stop();
   }
 

@@ -148,7 +148,8 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
   void setList(List<PlaylistItem> items, {int initialIndex = 0}) {
     state = PlaylistState(items: items, currentIndex: initialIndex);
     if (items.isNotEmpty && initialIndex >= 0 && initialIndex < items.length) {
-      ref.read(playerControllerProvider).openFile(items[initialIndex].path);
+      final item = items[initialIndex];
+      ref.read(playerControllerProvider).openFile(item.path, title: item.title);
       ref.read(activeTabProvider.notifier).setTab(AuraTab.player);
     }
   }
@@ -157,7 +158,7 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
     final updated = [...state.items, item];
     if (playImmediately || state.currentIndex == -1) {
       state = state.copyWith(items: updated, currentIndex: updated.length - 1);
-      ref.read(playerControllerProvider).openFile(item.path);
+      ref.read(playerControllerProvider).openFile(item.path, title: item.title);
       ref.read(activeTabProvider.notifier).setTab(AuraTab.player);
     } else {
       state = state.copyWith(items: updated);
@@ -175,7 +176,8 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
         ref.read(activeTabProvider.notifier).setTab(AuraTab.library);
       } else {
         newIdx = index >= updated.length ? updated.length - 1 : index;
-        ref.read(playerControllerProvider).openFile(updated[newIdx].path);
+        final nextItem = updated[newIdx];
+        ref.read(playerControllerProvider).openFile(nextItem.path, title: nextItem.title);
       }
     } else if (index < state.currentIndex) {
       newIdx--;
@@ -185,8 +187,9 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
 
   void playIndex(int index) {
     if (index >= 0 && index < state.items.length) {
+      final item = state.items[index];
       state = state.copyWith(currentIndex: index);
-      ref.read(playerControllerProvider).openFile(state.items[index].path);
+      ref.read(playerControllerProvider).openFile(item.path, title: item.title);
       ref.read(activeTabProvider.notifier).setTab(AuraTab.player);
     }
   }
