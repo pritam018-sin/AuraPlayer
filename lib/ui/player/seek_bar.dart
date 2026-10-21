@@ -217,14 +217,12 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
                               ),
                             ),
                           ),
-                          // Played Progress Bar (Ruby radiant gradient)
+                          // Played Progress Bar (Electric Cinema Cyan gradient)
                           FractionallySizedBox(
                             widthFactor: progress,
                             child: Container(
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFFE11D48), Color(0xFFFA2D48)],
-                                ),
+                                gradient: AppTheme.auraGradient,
                                 borderRadius: BorderRadius.circular(6),
                                 boxShadow: [
                                   BoxShadow(

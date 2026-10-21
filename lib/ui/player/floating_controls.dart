@@ -171,11 +171,7 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                   width: 44,
                                                   height: 44,
                                                   decoration: BoxDecoration(
-                                                    gradient: const LinearGradient(
-                                                      colors: [Color(0xFFE11D48), Color(0xFFFA2D48)],
-                                                      begin: Alignment.topLeft,
-                                                      end: Alignment.bottomRight,
-                                                    ),
+                                                    gradient: AppTheme.auraGradient,
                                                     shape: BoxShape.circle,
                                                     boxShadow: [
                                                       BoxShadow(
@@ -192,7 +188,7 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                           ? CupertinoIcons.pause_fill
                                                           : CupertinoIcons.play_fill,
                                                       size: 20,
-                                                      color: Colors.white,
+                                                      color: const Color(0xFF04131F),
                                                     ),
                                                   ),
                                                 ),

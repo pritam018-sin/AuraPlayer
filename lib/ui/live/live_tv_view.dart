@@ -282,11 +282,21 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.accent : AppTheme.surfaceSecondary,
+                        gradient: isSelected ? AppTheme.auraGradient : null,
+                        color: isSelected ? null : AppTheme.surfaceSecondary,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected ? Colors.transparent : AppTheme.glassBorder,
                         ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.accent.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -294,14 +304,14 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                           Icon(
                             cat['icon'] as IconData,
                             size: 13,
-                            color: isSelected ? Colors.white : AppTheme.textSecondary,
+                            color: isSelected ? const Color(0xFF04131F) : AppTheme.textSecondary,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             cat['label'] as String,
                             style: AppTheme.caption.copyWith(
-                              color: isSelected ? Colors.white : AppTheme.textSecondary,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: isSelected ? const Color(0xFF04131F) : AppTheme.textSecondary,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                             ),
                           ),
                         ],

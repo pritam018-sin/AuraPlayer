@@ -130,36 +130,29 @@ class AuraPlayerHome extends ConsumerWidget {
       backgroundColor: AppTheme.background,
       body: Stack(
         children: [
-          // AuraMusic-Inspired Ambient Glowing Background Orbs
+          // Cinema Pro Ambient Projector Lighting & Subtle Theater Glow
           Positioned(
-            top: -120,
-            left: -100,
+            top: -160,
+            left: 0,
+            right: 0,
             child: IgnorePointer(
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 110, sigmaY: 110),
-                child: Container(
-                  width: 380,
-                  height: 380,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppTheme.accent.withValues(alpha: 0.14),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -120,
-            right: -100,
-            child: IgnorePointer(
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 110, sigmaY: 110),
-                child: Container(
-                  width: 400,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppTheme.accentCyan.withValues(alpha: 0.10),
+              child: Center(
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 140, sigmaY: 100),
+                  child: Container(
+                    width: 700,
+                    height: 280,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.rectangle,
+                      borderRadius: BorderRadius.circular(200),
+                      gradient: RadialGradient(
+                        colors: [
+                          AppTheme.accent.withValues(alpha: 0.12),
+                          AppTheme.accentIndigo.withValues(alpha: 0.05),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -187,48 +180,86 @@ class AuraPlayerHome extends ConsumerWidget {
     switch (tab) {
       case AuraTab.player:
         return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.auraGradient,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.accent.withValues(alpha: 0.4),
-                      blurRadius: 24,
-                      offset: const Offset(0, 4),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 520),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
+            decoration: BoxDecoration(
+              color: AppTheme.surface.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 32,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.auraGradient,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.accent.withValues(alpha: 0.45),
+                        blurRadius: 28,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(CupertinoIcons.play_arrow_solid, size: 30, color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Cinema Theater Ready',
+                  style: AppTheme.headline.copyWith(letterSpacing: -0.3, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Select a movie from your library, open a folder, or paste a 4K HDR stream URL.',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.caption.copyWith(color: AppTheme.textSecondary, height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => ref.read(activeTabProvider.notifier).setTab(AuraTab.library),
+                      icon: const Icon(CupertinoIcons.film, size: 15),
+                      label: const Text('Browse Cinema Library'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                        textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => ref.read(activeTabProvider.notifier).setTab(AuraTab.live),
+                      icon: const Icon(CupertinoIcons.tv, size: 15, color: Colors.white),
+                      label: const Text('Watch Live TV', style: TextStyle(color: Colors.white)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppTheme.glassBorderHover),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
                   ],
                 ),
-                child: const Center(
-                  child: Icon(CupertinoIcons.play_arrow_solid, size: 32, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text('No Video Playing', style: AppTheme.headline),
-              const SizedBox(height: 8),
-              Text(
-                'Select a video from your library, open a folder, or drop a media file.',
-                style: AppTheme.caption,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => ref.read(activeTabProvider.notifier).setTab(AuraTab.library),
-                icon: const Icon(CupertinoIcons.folder_fill, size: 16),
-                label: const Text('Browse Video Library'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       case AuraTab.library:

@@ -142,7 +142,7 @@ class _OpenNetworkModalState extends ConsumerState<OpenNetworkModal> {
                       label: const Text('Play Stream'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accent,
-                        foregroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF04131F),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),

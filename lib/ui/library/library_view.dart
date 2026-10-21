@@ -10,7 +10,6 @@ import '../../services/thumbnail_service.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/frosted_glass.dart';
-import '../modals/open_network_modal.dart';
 
 class LibraryView extends ConsumerStatefulWidget {
   const LibraryView({super.key});
@@ -200,150 +199,113 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
         ),
         child: Column(
           children: [
-            // Top Pro Toolbar
+            // Single Unified Cinema Search & Filter Strip
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
               decoration: BoxDecoration(
-                color: AppTheme.surface.withValues(alpha: 0.7),
+                color: AppTheme.surface.withValues(alpha: 0.5),
                 border: const Border(
                   bottom: BorderSide(color: AppTheme.glassBorder, width: 0.5),
                 ),
               ),
               child: Row(
                 children: [
-                  // Cinema Icon Badge
+                  // 1. Search Field
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 250,
+                    height: 36,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.auraGradient,
+                      color: AppTheme.surfaceSecondary,
                       borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.accent.withValues(alpha: 0.35),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      border: Border.all(color: AppTheme.glassBorder),
                     ),
-                    child: const Center(
-                      child: Icon(CupertinoIcons.film_fill, size: 18, color: Colors.white),
+                    child: TextField(
+                      controller: _searchController,
+                      style: AppTheme.bodySmall,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'Search ${_scannedFiles.length} videos...',
+                        hintStyle: AppTheme.caption.copyWith(color: AppTheme.textTertiary),
+                        prefixIcon: const Icon(CupertinoIcons.search, size: 15, color: AppTheme.textSecondary),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(CupertinoIcons.clear_circled_solid, size: 13, color: AppTheme.textTertiary),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
                     ),
                   ),
+
                   const SizedBox(width: 14),
 
-                  // Search Bar
+                  // 2. Folder Filter Chips (Horizontal List)
                   Expanded(
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceSecondary,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.glassBorder),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        style: AppTheme.bodySmall,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Search collection (${_scannedFiles.length} videos available)...',
-                          hintStyle: AppTheme.caption.copyWith(color: AppTheme.textTertiary),
-                          prefixIcon: const Icon(CupertinoIcons.search, size: 16, color: AppTheme.accentCyan),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(CupertinoIcons.clear_circled_solid, size: 14, color: AppTheme.textTertiary),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {});
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
+                    child: SizedBox(
+                      height: 36,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          _folderChip(
+                            label: 'All Media (${_scannedFiles.length})',
+                            isSelected: _selectedFolder == null,
+                            onTap: () => setState(() => _selectedFolder = null),
+                          ),
+                          ...importedFolders.map((folder) {
+                            final name = folder.split(RegExp(r'[/\\]')).last;
+                            final count = _scannedFiles.where((f) => f.path.startsWith(folder)).length;
+                            return _folderChip(
+                              label: '$name ($count)',
+                              isSelected: _selectedFolder == folder,
+                              onTap: () => setState(() => _selectedFolder = folder),
+                              onDelete: () async {
+                                await storage.removeImportedFolder(folder);
+                                if (_selectedFolder == folder) _selectedFolder = null;
+                                await _scanAllImportedFolders();
+                              },
+                            );
+                          }),
+                        ],
                       ),
                     ),
                   ),
 
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 14),
 
-                  // Import Folder Button
-                  ElevatedButton.icon(
+                  // 3. Quick Actions: Add Folder & Add Files
+                  OutlinedButton.icon(
                     onPressed: _importFolder,
-                    icon: const Icon(CupertinoIcons.folder_badge_plus, size: 16),
-                    label: const Text('Import Folder'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                      textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                    icon: const Icon(CupertinoIcons.folder_badge_plus, size: 14),
+                    label: const Text('Add Folder'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.textPrimary,
+                      side: const BorderSide(color: AppTheme.glassBorder),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
-
                   const SizedBox(width: 8),
-
-                  // Import Files Button
                   OutlinedButton.icon(
                     onPressed: _importFiles,
-                    icon: const Icon(CupertinoIcons.plus, size: 16),
+                    icon: const Icon(CupertinoIcons.plus, size: 14),
                     label: const Text('Add Files'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.textPrimary,
                       side: const BorderSide(color: AppTheme.glassBorder),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
                     ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  // Open Network Stream Button
-                  IconButton(
-                    tooltip: 'Open Network Stream (URL)',
-                    onPressed: () => OpenNetworkModal.show(context),
-                    icon: const Icon(CupertinoIcons.globe, size: 19, color: AppTheme.accentCyan),
                   ),
                 ],
               ),
             ),
-
-            // Folder Filter Chips Bar
-            if (importedFolders.isNotEmpty)
-              Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceSecondary.withValues(alpha: 0.3),
-                  border: const Border(bottom: BorderSide(color: AppTheme.glassBorder, width: 0.5)),
-                ),
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _folderChip(
-                      label: 'All Media (${_scannedFiles.length})',
-                      isSelected: _selectedFolder == null,
-                      onTap: () => setState(() => _selectedFolder = null),
-                    ),
-                    ...importedFolders.map((folder) {
-                      final name = folder.split(RegExp(r'[/\\]')).last;
-                      final count = _scannedFiles.where((f) => f.path.startsWith(folder)).length;
-                      return _folderChip(
-                        label: '$name ($count)',
-                        isSelected: _selectedFolder == folder,
-                        onTap: () => setState(() => _selectedFolder = folder),
-                        onDelete: () async {
-                          await storage.removeImportedFolder(folder);
-                          if (_selectedFolder == folder) _selectedFolder = null;
-                          await _scanAllImportedFolders();
-                        },
-                      );
-                    }),
-                  ],
-                ),
-              ),
 
             // Main Content Area
             Expanded(
@@ -690,9 +652,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           decoration: BoxDecoration(
-            gradient: isSelected
-                ? const LinearGradient(colors: [Color(0xFFE11D48), Color(0xFFFA2D48)])
-                : null,
+            gradient: isSelected ? AppTheme.auraGradient : null,
             color: isSelected ? null : AppTheme.surfaceSecondary,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
@@ -714,7 +674,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
               Text(
                 label,
                 style: AppTheme.caption.copyWith(
-                  color: isSelected ? Colors.white : AppTheme.textSecondary,
+                  color: isSelected ? const Color(0xFF04131F) : AppTheme.textSecondary,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   fontSize: 12,
                 ),
@@ -726,7 +686,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                   child: Icon(
                     CupertinoIcons.clear_circled,
                     size: 13,
-                    color: isSelected ? Colors.white70 : AppTheme.textTertiary,
+                    color: isSelected ? const Color(0xFF04131F).withValues(alpha: 0.7) : AppTheme.textTertiary,
                   ),
                 ),
               ],
@@ -1150,50 +1110,107 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.auraGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.accent.withValues(alpha: 0.4),
-                    blurRadius: 24,
-                    offset: const Offset(0, 4),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 560),
+          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
+          decoration: BoxDecoration(
+            color: AppTheme.surface.withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.6),
+                blurRadius: 36,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.auraGradient,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.accent.withValues(alpha: 0.45),
+                      blurRadius: 28,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(CupertinoIcons.film_fill, size: 36, color: Color(0xFF04131F)),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                'Build Your Cinema Library',
+                style: AppTheme.headline.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.4),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Import your local Movies, Series, or Videos folders to browse your collection with instant 4K HDR playback and auto-generated high-resolution thumbnails.',
+                textAlign: TextAlign.center,
+                style: AppTheme.caption.copyWith(color: AppTheme.textSecondary, height: 1.45),
+              ),
+              const SizedBox(height: 28),
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _importFolder,
+                    icon: const Icon(CupertinoIcons.folder_badge_plus, size: 16),
+                    label: const Text('Import Video Folder'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accent,
+                      foregroundColor: const Color(0xFF04131F),
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                      textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _importFiles,
+                    icon: const Icon(CupertinoIcons.plus, size: 16, color: Colors.white),
+                    label: const Text('Add Media Files', style: TextStyle(color: Colors.white)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.glassBorderHover),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
-              child: const Center(
-                child: Icon(CupertinoIcons.folder_badge_plus, size: 36, color: Colors.white),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(CupertinoIcons.sparkles, size: 13, color: AppTheme.accent),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Drag & drop video files or folders anywhere onto this window',
+                      style: AppTheme.caption.copyWith(color: AppTheme.textTertiary, fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text('Build Your Video Library', style: AppTheme.headline),
-            const SizedBox(height: 8),
-            Text(
-              'Import your Movies, Shows, or Videos folder to browse your collection with instant playback.',
-              textAlign: TextAlign.center,
-              style: AppTheme.caption,
-            ),
-            const SizedBox(height: 28),
-            ElevatedButton.icon(
-              onPressed: _importFolder,
-              icon: const Icon(CupertinoIcons.folder_fill, size: 18),
-              label: const Text('Import Video Folder'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-                textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -84,7 +84,7 @@ class QueueView extends ConsumerWidget {
                         ],
                       ),
                       child: const Center(
-                        child: Icon(CupertinoIcons.list_bullet, size: 18, color: Colors.white),
+                        child: Icon(CupertinoIcons.list_bullet, size: 18, color: Color(0xFF04131F)),
                       ),
                     ),
                     const SizedBox(width: 14),
