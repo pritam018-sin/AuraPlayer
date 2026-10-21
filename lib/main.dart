@@ -13,6 +13,7 @@ import 'state/player_provider.dart';
 import 'theme/app_theme.dart';
 import 'ui/header/aura_header.dart';
 import 'ui/library/library_view.dart';
+import 'ui/live/live_tv_view.dart';
 import 'ui/player/video_surface.dart';
 import 'ui/views/history_view.dart';
 import 'ui/views/queue_view.dart';
@@ -230,6 +231,8 @@ class AuraPlayerHome extends ConsumerWidget {
         );
       case AuraTab.library:
         return const LibraryView();
+      case AuraTab.live:
+        return const LiveTvView();
       case AuraTab.playlist:
         return const QueueView();
       case AuraTab.history:

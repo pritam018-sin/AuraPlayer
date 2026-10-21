@@ -1,11 +1,14 @@
 import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
+import '../live/live_catalog.dart';
+import '../live/live_models.dart';
+import '../live/live_service.dart';
 import '../player/player_controller.dart';
 import '../player/player_models.dart';
 import '../settings/storage_service.dart';
 
-enum AuraTab { player, library, playlist, history }
+enum AuraTab { player, library, live, playlist, history }
 
 class ActiveTabNotifier extends Notifier<AuraTab> {
   @override
@@ -18,6 +21,88 @@ class ActiveTabNotifier extends Notifier<AuraTab> {
 
 final activeTabProvider =
     NotifierProvider<ActiveTabNotifier, AuraTab>(ActiveTabNotifier.new);
+
+final liveServiceProvider = Provider<LiveService>((ref) => LiveService());
+
+class LiveTvState {
+  final List<LiveChannel> channels;
+  final Set<String> favoriteIds;
+  final bool isLoading;
+  final String activePresetTitle;
+
+  const LiveTvState({
+    this.channels = const [],
+    this.favoriteIds = const {},
+    this.isLoading = false,
+    this.activePresetTitle = 'Curated Channels',
+  });
+
+  LiveTvState copyWith({
+    List<LiveChannel>? channels,
+    Set<String>? favoriteIds,
+    bool? isLoading,
+    String? activePresetTitle,
+  }) {
+    return LiveTvState(
+      channels: channels ?? this.channels,
+      favoriteIds: favoriteIds ?? this.favoriteIds,
+      isLoading: isLoading ?? this.isLoading,
+      activePresetTitle: activePresetTitle ?? this.activePresetTitle,
+    );
+  }
+}
+
+class LiveTvNotifier extends Notifier<LiveTvState> {
+  late final LiveService _service;
+
+  @override
+  LiveTvState build() {
+    _service = ref.watch(liveServiceProvider);
+    _init();
+    return const LiveTvState(channels: LiveCatalog.defaultChannels);
+  }
+
+  Future<void> _init() async {
+    final favs = await _service.getFavoriteIds();
+    state = state.copyWith(favoriteIds: favs);
+  }
+
+  Future<void> loadPreset(LivePreset preset) async {
+    state = state.copyWith(isLoading: true, activePresetTitle: preset.title);
+    final fetched = await _service.fetchM3u(preset.url);
+    if (fetched.isNotEmpty) {
+      state = state.copyWith(channels: fetched, isLoading: false);
+    } else {
+      state = state.copyWith(isLoading: false);
+    }
+  }
+
+  Future<void> loadCustomM3u(String url) async {
+    state = state.copyWith(isLoading: true, activePresetTitle: 'Custom Playlist');
+    final fetched = await _service.fetchM3u(url);
+    if (fetched.isNotEmpty) {
+      state = state.copyWith(channels: fetched, isLoading: false);
+    } else {
+      state = state.copyWith(isLoading: false);
+    }
+  }
+
+  void resetToCurated() {
+    state = state.copyWith(
+      channels: LiveCatalog.defaultChannels,
+      activePresetTitle: 'Curated Channels',
+    );
+  }
+
+  Future<void> toggleFavorite(String id) async {
+    await _service.toggleFavorite(id);
+    final favs = await _service.getFavoriteIds();
+    state = state.copyWith(favoriteIds: favs);
+  }
+}
+
+final liveTvProvider =
+    NotifierProvider<LiveTvNotifier, LiveTvState>(LiveTvNotifier.new);
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   throw UnimplementedError('StorageService must be overridden in main');

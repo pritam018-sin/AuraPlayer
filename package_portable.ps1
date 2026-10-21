@@ -8,14 +8,16 @@ $zipPath = "$distDir\AuraPlayer-Windows-Portable.zip"
 
 Write-Host "Creating portable release bundle..."
 
+# Stop running instance if any
+Get-Process -Name "AuraPlayer","lumen" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 600
+
 # Copy lumen.exe to AuraPlayer.exe
 Copy-Item -Path "$releaseDir\lumen.exe" -Destination "$releaseDir\AuraPlayer.exe" -Force
 
-# Clean old dist folder
-if (Test-Path $distDir) {
-    Remove-Item -Path $distDir -Recurse -Force
+if (-not (Test-Path $portableFolder)) {
+    New-Item -ItemType Directory -Path $portableFolder -Force | Out-Null
 }
-New-Item -ItemType Directory -Path $portableFolder -Force | Out-Null
 
 # Copy all runtime files into portable folder
 Copy-Item -Path "$releaseDir\*" -Destination $portableFolder -Recurse -Force -Exclude "*.exp","*.lib"

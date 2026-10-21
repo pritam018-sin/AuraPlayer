@@ -170,6 +170,7 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                   _menuItem('Open Multiple Files...', '', _openMultipleFiles),
                   _menuItem('Open Folder to Library...', 'Ctrl+F', _openFolder),
                   _menuItem('Open Network Stream...', 'Ctrl+N', () => OpenNetworkModal.show(context)),
+                  _menuItem('Live TV & Sports...', 'Ctrl+T', () => activeTabNotifier.setTab(AuraTab.live)),
                   const PopupMenuDivider(height: 1),
                   _menuItem('Exit', 'Ctrl+Q', () => exit(0)),
                 ],
@@ -256,6 +257,13 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                           label: 'Library & Folders',
                           isActive: activeTab == AuraTab.library,
                           onTap: () => activeTabNotifier.setTab(AuraTab.library),
+                        ),
+                        const SizedBox(width: 6),
+                        _navPill(
+                          icon: CupertinoIcons.antenna_radiowaves_left_right,
+                          label: 'Live TV & Sports',
+                          isActive: activeTab == AuraTab.live,
+                          onTap: () => activeTabNotifier.setTab(AuraTab.live),
                         ),
                         const SizedBox(width: 6),
                         _navPill(
