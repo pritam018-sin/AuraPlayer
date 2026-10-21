@@ -96,7 +96,7 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
             }
           });
         } else {
-          widget.playerWrapper.stop();
+          ref.read(playlistProvider.notifier).stopAndClose();
         }
         _onUserActivity();
         break;
@@ -130,6 +130,8 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
         final windowState = ref.read(windowControlsProvider);
         if (windowState.isFullscreen) {
           ref.read(windowControlsProvider.notifier).toggleFullscreen();
+        } else {
+          ref.read(playlistProvider.notifier).stopAndClose();
         }
         _onUserActivity();
         break;

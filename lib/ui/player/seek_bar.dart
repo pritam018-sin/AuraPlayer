@@ -7,6 +7,7 @@ class CustomSeekBar extends StatefulWidget {
   final Duration buffer;
   final ValueChanged<Duration> onSeek;
   final ValueChanged<bool>? onSeekStartEnd;
+  final ValueChanged<Duration?>? onDragChanged;
   final bool isLive;
 
   const CustomSeekBar({
@@ -16,6 +17,7 @@ class CustomSeekBar extends StatefulWidget {
     required this.buffer,
     required this.onSeek,
     this.onSeekStartEnd,
+    this.onDragChanged,
     this.isLive = false,
   });
 
@@ -28,6 +30,10 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
   bool _isDragging = false;
   double _hoverPositionFraction = 0.0;
   double _dragPositionFraction = 0.0;
+
+  // Optimistic seek latch to eliminate snap-back when drag ends
+  Duration? _optimisticTarget;
+  DateTime? _optimisticTimestamp;
 
   String _formatDuration(Duration d) {
     final hours = d.inHours;
@@ -46,19 +52,37 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
     }
 
     final totalMs = widget.duration.inMilliseconds.toDouble();
-    final currentMs = _isDragging
-        ? _dragPositionFraction * totalMs
-        : widget.position.inMilliseconds.toDouble();
-    final bufferMs = widget.buffer.inMilliseconds.toDouble();
 
-    final progress = totalMs > 0 ? (currentMs / totalMs).clamp(0.0, 1.0) : 0.0;
+    // Release optimistic seek latch when actual playback catches up within 600ms or after 1.2s timeout
+    if (_optimisticTarget != null) {
+      final diff = (widget.position - _optimisticTarget!).abs().inMilliseconds;
+      final elapsed = _optimisticTimestamp != null
+          ? DateTime.now().difference(_optimisticTimestamp!).inMilliseconds
+          : 9999;
+      if (diff < 600 || elapsed > 1200) {
+        _optimisticTarget = null;
+        _optimisticTimestamp = null;
+      }
+    }
+
+    final double effectiveMs;
+    if (_isDragging) {
+      effectiveMs = _dragPositionFraction * totalMs;
+    } else if (_optimisticTarget != null) {
+      effectiveMs = _optimisticTarget!.inMilliseconds.toDouble();
+    } else {
+      effectiveMs = widget.position.inMilliseconds.toDouble();
+    }
+
+    final progress = totalMs > 0 ? (effectiveMs / totalMs).clamp(0.0, 1.0) : 0.0;
+    final bufferMs = widget.buffer.inMilliseconds.toDouble();
     final bufferProgress = totalMs > 0 ? (bufferMs / totalMs).clamp(0.0, 1.0) : 0.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         const thumbRadius = 8.0;
-        const activeThumbRadius = 9.5;
+        const activeThumbRadius = 10.0;
         final currentThumbRadius = (_isHovering || _isDragging) ? activeThumbRadius : thumbRadius;
 
         // Position of radio button thumb
@@ -81,50 +105,76 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onHorizontalDragStart: (details) {
+              if (totalMs <= 0) return;
+              final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
               setState(() {
                 _isDragging = true;
-                _dragPositionFraction = (details.localPosition.dx / width).clamp(0.0, 1.0);
+                _dragPositionFraction = frac;
+                _optimisticTarget = null;
+                _optimisticTimestamp = null;
               });
+              final dragDuration = Duration(milliseconds: (frac * totalMs).round());
+              widget.onDragChanged?.call(dragDuration);
               widget.onSeekStartEnd?.call(true);
             },
             onHorizontalDragUpdate: (details) {
+              if (totalMs <= 0) return;
+              final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
               setState(() {
-                _dragPositionFraction = (details.localPosition.dx / width).clamp(0.0, 1.0);
+                _dragPositionFraction = frac;
               });
+              final dragDuration = Duration(milliseconds: (frac * totalMs).round());
+              widget.onDragChanged?.call(dragDuration);
             },
             onHorizontalDragEnd: (details) {
+              if (totalMs <= 0) {
+                setState(() => _isDragging = false);
+                return;
+              }
               final targetMs = (_dragPositionFraction * totalMs).round();
-              widget.onSeek(Duration(milliseconds: targetMs));
-              setState(() => _isDragging = false);
+              final targetDuration = Duration(milliseconds: targetMs);
+              setState(() {
+                _isDragging = false;
+                _optimisticTarget = targetDuration;
+                _optimisticTimestamp = DateTime.now();
+              });
+              widget.onSeek(targetDuration);
+              widget.onDragChanged?.call(null);
               widget.onSeekStartEnd?.call(false);
             },
             onTapDown: (details) {
+              if (totalMs <= 0) return;
               final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
               final targetMs = (frac * totalMs).round();
-              widget.onSeek(Duration(milliseconds: targetMs));
+              final targetDuration = Duration(milliseconds: targetMs);
+              setState(() {
+                _optimisticTarget = targetDuration;
+                _optimisticTimestamp = DateTime.now();
+              });
+              widget.onSeek(targetDuration);
             },
             child: SizedBox(
-              height: 28, // Generous hit box
+              height: 30, // Generous hit box for effortless dragging
               child: Stack(
                 clipBehavior: Clip.none,
                 alignment: Alignment.centerLeft,
                 children: [
-                  // Hover / Drag Timestamp Tooltip
+                  // Hover / Drag Monospace Timestamp Tooltip
                   if ((_isHovering || _isDragging) && totalMs > 0)
                     Positioned(
-                      bottom: 24,
+                      bottom: 26,
                       left: tooltipLeft,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF18181F),
+                          color: const Color(0xFF14141B),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppTheme.glassBorder),
+                          border: Border.all(color: AppTheme.glassBorder, width: 0.8),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
+                              color: Colors.black.withValues(alpha: 0.7),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
@@ -134,6 +184,7 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 11,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
@@ -144,12 +195,12 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 140),
                       curve: Curves.easeOutCubic,
-                      height: (_isHovering || _isDragging) ? 8.0 : 6.0,
+                      height: (_isHovering || _isDragging) ? 8.0 : 5.5,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
+                        color: Colors.white.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: Colors.black.withValues(alpha: 0.3),
+                          color: Colors.black.withValues(alpha: 0.4),
                           width: 0.5,
                         ),
                       ),
@@ -161,12 +212,12 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
                             widthFactor: bufferProgress,
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.40),
+                                color: Colors.white.withValues(alpha: 0.42),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                             ),
                           ),
-                          // Played Progress Bar
+                          // Played Progress Bar (Ruby radiant gradient)
                           FractionallySizedBox(
                             widthFactor: progress,
                             child: Container(
@@ -177,8 +228,9 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
                                 borderRadius: BorderRadius.circular(6),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.accent.withValues(alpha: 0.5),
-                                    blurRadius: 6,
+                                    color: AppTheme.accent.withValues(alpha: 0.6),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
                                   ),
                                 ],
                               ),
@@ -193,7 +245,7 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
                   Positioned(
                     left: thumbLeft,
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
+                      duration: const Duration(milliseconds: 100),
                       width: currentThumbRadius * 2,
                       height: currentThumbRadius * 2,
                       decoration: BoxDecoration(
@@ -201,20 +253,31 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
                         color: Colors.white,
                         border: Border.all(
                           color: AppTheme.accent,
-                          width: (_isHovering || _isDragging) ? 4.0 : 3.5,
+                          width: (_isHovering || _isDragging) ? 3.5 : 3.0,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.accent.withValues(alpha: 0.75),
-                            blurRadius: (_isHovering || _isDragging) ? 12 : 8,
-                            spreadRadius: (_isHovering || _isDragging) ? 2 : 1,
+                            color: AppTheme.accent.withValues(alpha: 0.85),
+                            blurRadius: (_isHovering || _isDragging) ? 14 : 9,
+                            spreadRadius: (_isHovering || _isDragging) ? 2.5 : 1.0,
                           ),
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1.5),
+                            color: Colors.black.withValues(alpha: 0.6),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
                         ],
+                      ),
+                      // Inner radio button center dot
+                      child: Center(
+                        child: Container(
+                          width: currentThumbRadius * 0.7,
+                          height: currentThumbRadius * 0.7,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.accent,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -236,7 +299,7 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withValues(alpha: 0.85),
+              color: const Color(0xFFEF4444).withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(4),
               boxShadow: [
                 BoxShadow(

@@ -47,12 +47,12 @@ class VideoContextMenu {
         ),
         PopupMenuItem(
           height: 34,
-          onTap: () => playerWrapper.stop(),
+          onTap: () => ref.read(playlistProvider.notifier).stopAndClose(),
           child: Row(
             children: [
               const Icon(CupertinoIcons.stop_fill, size: 16, color: AppTheme.textSecondary),
               const SizedBox(width: 10),
-              Text('Stop', style: AppTheme.bodySmall),
+              Text('Stop & Return to Library', style: AppTheme.bodySmall),
               const Spacer(),
               Text('S', style: AppTheme.caption),
             ],

@@ -24,6 +24,7 @@ class FloatingControls extends ConsumerStatefulWidget {
 class _FloatingControlsState extends ConsumerState<FloatingControls> {
   bool _isHoveringVolume = false;
   bool _showRemainingTime = false;
+  Duration? _draggedSeekPosition;
 
   String _formatDuration(Duration d) {
     final hours = d.inHours;
@@ -89,11 +90,14 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                             final rate = rateSnap.data ?? 1.0;
                             final isLive = widget.playerWrapper.isLiveStream;
 
+                            // Instantaneous sync during scrubbing
+                            final effectivePos = _draggedSeekPosition ?? position;
+
                             final timeDisplay = isLive
                                 ? '● LIVE'
                                 : (_showRemainingTime
-                                    ? '-${_formatDuration(duration - position)} / ${_formatDuration(duration)}'
-                                    : '${_formatDuration(position)} / ${_formatDuration(duration)}');
+                                    ? '-${_formatDuration(duration - effectivePos)} / ${_formatDuration(duration)}'
+                                    : '${_formatDuration(effectivePos)} / ${_formatDuration(duration)}');
 
                             return AnimatedOpacity(
                               duration: const Duration(milliseconds: 220),
@@ -126,6 +130,9 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                         duration: duration,
                                         buffer: buffer,
                                         isLive: isLive,
+                                        onDragChanged: (d) {
+                                          setState(() => _draggedSeekPosition = d);
+                                        },
                                         onSeek: (pos) => widget.playerWrapper.seek(pos),
                                       ),
 
@@ -211,10 +218,10 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                               const SizedBox(width: 4),
 
                                               _iconButton(
-                                                tooltip: 'Stop (S)',
+                                                tooltip: 'Stop & Return to Library (S)',
                                                 icon: CupertinoIcons.stop_fill,
                                                 size: 15,
-                                                onTap: () => widget.playerWrapper.stop(),
+                                                onTap: () => playlistNotifier.stopAndClose(),
                                               ),
 
                                               const SizedBox(width: 14),

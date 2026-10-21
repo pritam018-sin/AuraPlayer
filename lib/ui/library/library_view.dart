@@ -3,6 +3,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../player/player_models.dart';
 import '../../services/thumbnail_service.dart';
@@ -129,6 +130,20 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     return list;
   }
 
+  File? _getHeroFeaturedFile(List<File> files) {
+    if (files.isEmpty) return null;
+    final storage = ref.read(storageServiceProvider);
+    final recents = storage.getRecentFiles();
+    for (final recent in recents) {
+      for (final f in files) {
+        if (f.path == recent.path) {
+          return f;
+        }
+      }
+    }
+    return files.first;
+  }
+
   String _formatFileSize(int bytes) {
     if (bytes >= 1024 * 1024 * 1024) {
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
@@ -152,6 +167,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     final importedFolders = storage.getImportedFolders();
     final filtered = _filteredFiles;
     final totalBytes = _calculateTotalSize(filtered);
+    final heroFeatured = _getHeroFeaturedFile(filtered);
 
     return DropTarget(
       onDragEntered: (_) => setState(() => _isDraggingOver = true),
@@ -335,90 +351,323 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                   ? const Center(child: CircularProgressIndicator(color: AppTheme.accent))
                   : filtered.isEmpty
                       ? _emptyLibraryView()
-                      : Column(
-                          children: [
-                            // Stats & Quick Actions Bar
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        '${filtered.length} TITLES',
-                                        style: AppTheme.caption.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                          letterSpacing: 0.8,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '•  ${_formatFileSize(totalBytes)} TOTAL',
-                                        style: AppTheme.caption.copyWith(
-                                          color: AppTheme.textTertiary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      ElevatedButton.icon(
-                                        onPressed: () => _playAll(shuffle: false),
-                                        icon: const Icon(CupertinoIcons.play_circle_fill, size: 16),
-                                        label: const Text('Play All'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppTheme.accent.withValues(alpha: 0.2),
-                                          foregroundColor: AppTheme.accent,
-                                          elevation: 0,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            side: const BorderSide(color: AppTheme.accent, width: 0.8),
+                      : CustomScrollView(
+                          slivers: [
+                            // 1. Apple TV / Infuse 8 Cinematic Hero Spotlight
+                            if (_searchController.text.isEmpty && heroFeatured != null)
+                              SliverToBoxAdapter(
+                                child: _buildHeroSpotlight(heroFeatured),
+                              ),
+
+                            // 2. Stats & Quick Actions Toolbar
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${filtered.length} TITLES',
+                                          style: AppTheme.caption.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                            letterSpacing: 0.8,
                                           ),
-                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                          textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w700),
                                         ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      OutlinedButton.icon(
-                                        onPressed: () => _playAll(shuffle: true),
-                                        icon: const Icon(CupertinoIcons.shuffle, size: 15),
-                                        label: const Text('Shuffle'),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: AppTheme.textSecondary,
-                                          side: const BorderSide(color: AppTheme.glassBorder),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                          textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w500),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '•  ${_formatFileSize(totalBytes)} TOTAL',
+                                          style: AppTheme.caption.copyWith(
+                                            color: AppTheme.textTertiary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        ElevatedButton.icon(
+                                          onPressed: () => _playAll(shuffle: false),
+                                          icon: const Icon(CupertinoIcons.play_circle_fill, size: 16),
+                                          label: const Text('Play All'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.accent.withValues(alpha: 0.2),
+                                            foregroundColor: AppTheme.accent,
+                                            elevation: 0,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              side: const BorderSide(color: AppTheme.accent, width: 0.8),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                            textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w700),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        OutlinedButton.icon(
+                                          onPressed: () => _playAll(shuffle: true),
+                                          icon: const Icon(CupertinoIcons.shuffle, size: 15),
+                                          label: const Text('Shuffle'),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppTheme.textSecondary,
+                                            side: const BorderSide(color: AppTheme.glassBorder),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                            textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w500),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
 
-                            // 16:9 Cinematic Video Cards Grid
-                            Expanded(
-                              child: GridView.builder(
-                                padding: const EdgeInsets.fromLTRB(28, 4, 28, 28),
+                            // 3. 16:9 Cinematic Video Cards Grid
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(28, 4, 28, 32),
+                              sliver: SliverGrid(
                                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                   maxCrossAxisExtent: 310,
                                   mainAxisExtent: 235,
                                   crossAxisSpacing: 18,
                                   mainAxisSpacing: 18,
                                 ),
-                                itemCount: filtered.length,
-                                itemBuilder: (context, index) {
-                                  final file = filtered[index];
-                                  return _videoCard(file);
-                                },
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final file = filtered[index];
+                                    return _videoCard(file);
+                                  },
+                                  childCount: filtered.length,
+                                ),
                               ),
                             ),
                           ],
                         ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroSpotlight(File file) {
+    final rawName = file.path.split(RegExp(r'[/\\]')).last;
+    final cleanTitle = rawName.contains('.')
+        ? rawName.substring(0, rawName.lastIndexOf('.'))
+        : rawName;
+    final ext = rawName.contains('.') ? rawName.split('.').last.toUpperCase() : 'VIDEO';
+    final storage = ref.read(storageServiceProvider);
+    final savedPos = storage.getPosition(file.path);
+    final thumb = ThumbnailService.getCachedThumbnail(file.path);
+    int sizeBytes = 0;
+    try {
+      sizeBytes = file.lengthSync();
+    } catch (_) {}
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(28, 14, 28, 6),
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background image (thumbnail cover with gradient scrim)
+            if (thumb != null)
+              Positioned.fill(
+                child: Image.file(
+                  thumb,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  errorBuilder: (_, _, _) => _fallbackThumb(),
+                ),
+              )
+            else
+              Positioned.fill(child: _fallbackThumb()),
+
+            // Cinematic multi-directional dark gradient scrim
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      const Color(0xFF0D0D12),
+                      const Color(0xFF0D0D12).withValues(alpha: 0.95),
+                      const Color(0xFF0D0D12).withValues(alpha: 0.75),
+                      const Color(0xFF0D0D12).withValues(alpha: 0.25),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.40, 0.65, 0.85, 1.0],
+                  ),
+                ),
+              ),
+            ),
+
+            // Content Left Overlay
+            Positioned(
+              top: 22,
+              bottom: 22,
+              left: 28,
+              right: 180,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Badge Row
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFE11D48), Color(0xFFFA2D48)],
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.accent.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(CupertinoIcons.sparkles, size: 10, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              savedPos.inSeconds > 5 ? 'CONTINUE WATCHING' : 'FEATURED MEDIA',
+                              style: AppTheme.caption.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 9.5,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+                        ),
+                        child: Text(
+                          ext,
+                          style: AppTheme.caption.copyWith(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                      if (sizeBytes > 0) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatFileSize(sizeBytes),
+                          style: AppTheme.caption.copyWith(
+                            color: AppTheme.textTertiary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Hero Title
+                  Text(
+                    cleanTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.headline.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Subtitle / Status
+                  Text(
+                    savedPos.inSeconds > 5
+                        ? 'Paused at ${_formatDuration(savedPos)} • Click resume to continue playback where you left off'
+                        : 'Ready to play in ultra-smooth high definition with full hardware acceleration',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.caption.copyWith(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const Spacer(),
+
+                  // Action Buttons
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          ref.read(playlistProvider.notifier).addItem(
+                                PlaylistItem(path: file.path, title: cleanTitle),
+                                playImmediately: true,
+                              );
+                        },
+                        icon: const Icon(CupertinoIcons.play_fill, size: 14),
+                        label: Text(savedPos.inSeconds > 5 ? 'Resume Watching' : 'Play Now'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                          shadowColor: AppTheme.accent.withValues(alpha: 0.5),
+                          textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      if (savedPos.inSeconds > 5) ...[
+                        const SizedBox(width: 10),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            storage.setPosition(file.path, Duration.zero);
+                            ref.read(playlistProvider.notifier).addItem(
+                                  PlaylistItem(path: file.path, title: cleanTitle),
+                                  playImmediately: true,
+                                );
+                          },
+                          icon: const Icon(CupertinoIcons.arrow_counterclockwise, size: 13),
+                          label: const Text('From Beginning'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: AppTheme.glassBorder),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -556,7 +805,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                     _fallbackThumb(),
                   ],
 
-                  // Top Badges Row (Format + Quality)
+                  // Top Badges Row (Format + Quality + 3-Dots Menu)
                   Positioned(
                     top: 8,
                     left: 8,
@@ -564,58 +813,181 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Format Badge (e.g. MKV, MP4)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.75),
-                            borderRadius: BorderRadius.circular(5),
-                            border: Border.all(color: AppTheme.glassBorder),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Format Badge (e.g. MKV, MP4)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                borderRadius: BorderRadius.circular(5),
+                                border: Border.all(color: AppTheme.glassBorder),
+                              ),
+                              child: Text(
+                                ext,
+                                style: AppTheme.caption.copyWith(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.accent,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+
+                            // Resolution Badge
+                            if (cleanTitle.toLowerCase().contains('4k') || cleanTitle.toLowerCase().contains('2160p'))
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEAB308).withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: Text(
+                                  '4K HDR',
+                                  style: AppTheme.caption.copyWith(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              )
+                            else if (cleanTitle.toLowerCase().contains('1080p') || cleanTitle.toLowerCase().contains('fhd'))
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.accentCyan.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: Text(
+                                  '1080P',
+                                  style: AppTheme.caption.copyWith(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+
+                        // 3-Dots Quick Actions Menu
+                        PopupMenuButton<String>(
+                          tooltip: 'Options',
+                          color: AppTheme.surface.withValues(alpha: 0.95),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: AppTheme.glassBorder),
                           ),
-                          child: Text(
-                            ext,
-                            style: AppTheme.caption.copyWith(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.accent,
-                              letterSpacing: 0.5,
+                          onSelected: (val) async {
+                            if (val == 'play') {
+                              ref.read(playlistProvider.notifier).addItem(
+                                    PlaylistItem(path: file.path, title: cleanTitle),
+                                    playImmediately: true,
+                                  );
+                            } else if (val == 'restart') {
+                              storage.setPosition(file.path, Duration.zero);
+                              ref.read(playlistProvider.notifier).addItem(
+                                    PlaylistItem(path: file.path, title: cleanTitle),
+                                    playImmediately: true,
+                                  );
+                            } else if (val == 'queue') {
+                              ref.read(playlistProvider.notifier).addItem(
+                                    PlaylistItem(path: file.path, title: cleanTitle),
+                                    playImmediately: false,
+                                  );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Added to playlist: $cleanTitle'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } else if (val == 'explorer') {
+                              Process.run('explorer.exe', ['/select,', file.path]);
+                            } else if (val == 'copy') {
+                              final sm = ScaffoldMessenger.of(context);
+                              await Clipboard.setData(ClipboardData(text: file.path));
+                              sm.showSnackBar(
+                                const SnackBar(
+                                  content: Text('File path copied to clipboard'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          itemBuilder: (ctx) => [
+                            const PopupMenuItem(
+                              value: 'play',
+                              height: 32,
+                              child: Row(
+                                children: [
+                                  Icon(CupertinoIcons.play_fill, size: 14, color: AppTheme.accent),
+                                  SizedBox(width: 8),
+                                  Text('Play Now', style: TextStyle(fontSize: 12.5)),
+                                ],
+                              ),
+                            ),
+                            if (savedPos.inSeconds > 5)
+                              const PopupMenuItem(
+                                value: 'restart',
+                                height: 32,
+                                child: Row(
+                                  children: [
+                                    Icon(CupertinoIcons.arrow_counterclockwise, size: 14, color: Colors.white70),
+                                    SizedBox(width: 8),
+                                    Text('Play from Start', style: TextStyle(fontSize: 12.5)),
+                                  ],
+                                ),
+                              ),
+                            const PopupMenuItem(
+                              value: 'queue',
+                              height: 32,
+                              child: Row(
+                                children: [
+                                  Icon(CupertinoIcons.plus_circle, size: 14, color: Colors.white70),
+                                  SizedBox(width: 8),
+                                  Text('Add to Queue', style: TextStyle(fontSize: 12.5)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(height: 1),
+                            const PopupMenuItem(
+                              value: 'explorer',
+                              height: 32,
+                              child: Row(
+                                children: [
+                                  Icon(CupertinoIcons.folder, size: 14, color: Colors.white70),
+                                  SizedBox(width: 8),
+                                  Text('Show in Explorer', style: TextStyle(fontSize: 12.5)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'copy',
+                              height: 32,
+                              child: Row(
+                                children: [
+                                  Icon(CupertinoIcons.doc_on_clipboard, size: 14, color: Colors.white70),
+                                  SizedBox(width: 8),
+                                  Text('Copy Path', style: TextStyle(fontSize: 12.5)),
+                                ],
+                              ),
+                            ),
+                          ],
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+                            ),
+                            child: const Center(
+                              child: Icon(CupertinoIcons.ellipsis, size: 13, color: Colors.white),
                             ),
                           ),
                         ),
-
-                        // Resolution Badge
-                        if (cleanTitle.toLowerCase().contains('4k') || cleanTitle.toLowerCase().contains('2160p'))
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEAB308).withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              '4K HDR',
-                              style: AppTheme.caption.copyWith(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                              ),
-                            ),
-                          )
-                        else if (cleanTitle.toLowerCase().contains('1080p') || cleanTitle.toLowerCase().contains('fhd'))
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentCyan.withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              '1080P',
-                              style: AppTheme.caption.copyWith(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -673,7 +1045,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                         ),
                         child: FractionallySizedBox(
                           alignment: Alignment.centerLeft,
-                          widthFactor: 0.45, // Indicator that user has progress
+                          widthFactor: 0.45,
                           child: Container(
                             decoration: const BoxDecoration(
                               color: AppTheme.accent,

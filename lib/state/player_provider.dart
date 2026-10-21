@@ -202,6 +202,13 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
       playIndex(state.currentIndex - 1);
     }
   }
+
+  Future<void> stopAndClose() async {
+    await ref.read(playerControllerProvider).stop();
+    state = const PlaylistState();
+    ref.read(windowControlsProvider.notifier).closePlaylist();
+    ref.read(activeTabProvider.notifier).setTab(AuraTab.library);
+  }
 }
 
 final playlistProvider =

@@ -160,6 +160,37 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                 ),
               ),
 
+              if (activeTab == AuraTab.player) ...[
+                const SizedBox(width: 14),
+                InkWell(
+                  onTap: () => playlistNotifier.stopAndClose(),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(CupertinoIcons.arrow_left, size: 13, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Library',
+                          style: AppTheme.caption.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
               const SizedBox(width: 16),
 
               // VLC Menu Dropdowns
@@ -179,7 +210,7 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                 label: 'Playback',
                 items: [
                   _menuItem('Play / Pause', 'Space', () => widget.playerWrapper.playOrPause()),
-                  _menuItem('Stop', 'S', () => widget.playerWrapper.stop()),
+                  _menuItem('Stop', 'S', () => playlistNotifier.stopAndClose()),
                   _menuItem('Previous', 'P', playlist.hasPrev ? () => playlistNotifier.prev() : null),
                   _menuItem('Next', 'N', playlist.hasNext ? () => playlistNotifier.next() : null),
                   const PopupMenuDivider(height: 1),
