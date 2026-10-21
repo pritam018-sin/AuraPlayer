@@ -5,6 +5,7 @@ import '../../player/player_controller.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
 import 'audio_sub_sheet.dart';
+import 'context_menu.dart';
 import 'seek_bar.dart';
 import '../modals/cinema_studio_modal.dart';
 
@@ -448,6 +449,29 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                 size: 18,
                                                 onTap: () => windowNotifier.toggleFullscreen(),
                                               ),
+
+                                                const SizedBox(width: 4),
+
+                                                // More Options (3-dots)
+                                                Builder(
+                                                  builder: (btnCtx) => _iconButton(
+                                                    tooltip: 'More Options',
+                                                    icon: Icons.more_vert_rounded,
+                                                    size: 18,
+                                                    onTap: () {
+                                                      final box = btnCtx.findRenderObject() as RenderBox?;
+                                                      if (box != null) {
+                                                        final pos = box.localToGlobal(Offset.zero);
+                                                        VideoContextMenu.show(
+                                                          context,
+                                                          Offset(pos.dx - 180, pos.dy - 340),
+                                                          widget.playerWrapper,
+                                                          ref,
+                                                        );
+                                                      }
+                                                    },
+                                                  ),
+                                                ),
                                             ],
                                           ),
                                         ],

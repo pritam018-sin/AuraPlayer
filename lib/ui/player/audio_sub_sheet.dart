@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import '../../player/player_controller.dart';
+import '../../player/track_formatters.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/frosted_glass.dart';
 
@@ -94,9 +95,7 @@ class _AudioSubtitleSheetState extends State<AudioSubtitleSheet> {
                         else
                           ...tracks.audio.map((t) {
                             final isSelected = t.id == currentAudio.id;
-                            final label = (t.title?.isNotEmpty ?? false)
-                                ? t.title!
-                                : (t.language?.isNotEmpty ?? false ? t.language! : 'Track ${t.id}');
+                            final label = TrackFormatters.formatAudioTrack(t);
                             return _trackTile(
                               title: label,
                               isSelected: isSelected,
@@ -147,9 +146,7 @@ class _AudioSubtitleSheetState extends State<AudioSubtitleSheet> {
                         // Subtitle Track List
                         ...tracks.subtitle.map((s) {
                           final isSelected = s.id == currentSub.id;
-                          final label = (s.title?.isNotEmpty ?? false)
-                              ? s.title!
-                              : (s.language?.isNotEmpty ?? false ? s.language! : 'Subtitle ${s.id}');
+                          final label = TrackFormatters.formatSubtitleTrack(s);
                           return _trackTile(
                             title: label,
                             isSelected: isSelected,

@@ -330,6 +330,14 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                     onTap: () => windowNotifier.toggleMiniMode(),
                   ),
 
+                  // Cinema Studio & More Options (3-dots)
+                  _quickActionIcon(
+                    tooltip: 'Cinema Studio & Options (I)',
+                    icon: Icons.more_vert_rounded,
+                    isActive: false,
+                    onTap: () => CinemaStudioModal.show(context, widget.playerWrapper),
+                  ),
+
                   const SizedBox(width: 8),
 
                   // Windows Frameless Titlebar Controls (Minimize, Maximize, Close)

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
@@ -303,6 +303,90 @@ class AuraPlayerWrapper {
     subtitleDelay = Duration.zero;
     try {
       (player.platform as dynamic)?.setProperty('sub-delay', '0');
+    } catch (_) {}
+  }
+
+  // --- SUBTITLE CUSTOMIZATION SUITE ---
+  Color subColor = const Color(0xFFFFFFFF);
+  double subFontSize = 48.0;
+  String subFontFamily = 'Segoe UI';
+  String subBgMode = 'none'; // 'none', 'glass', 'opaque'
+  bool subBold = false;
+  double subBorderSize = 2.5;
+  int subPosition = 100; // 0 to 100
+
+  void setSubtitleColor(Color color) {
+    subColor = color;
+    final hex = '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
+    try {
+      (player.platform as dynamic)?.setProperty('sub-color', hex);
+    } catch (_) {}
+  }
+
+  void setSubtitleFontSize(double size) {
+    subFontSize = size;
+    try {
+      (player.platform as dynamic)?.setProperty('sub-font-size', size.toInt().toString());
+    } catch (_) {}
+  }
+
+  void setSubtitleFontFamily(String font) {
+    subFontFamily = font;
+    try {
+      (player.platform as dynamic)?.setProperty('sub-font', font);
+    } catch (_) {}
+  }
+
+  void setSubtitleBgMode(String mode) {
+    subBgMode = mode;
+    try {
+      if (mode == 'none') {
+        (player.platform as dynamic)?.setProperty('sub-back-color', '#00000000');
+      } else if (mode == 'glass') {
+        (player.platform as dynamic)?.setProperty('sub-back-color', '#80000000');
+      } else if (mode == 'opaque') {
+        (player.platform as dynamic)?.setProperty('sub-back-color', '#D0000000');
+      }
+    } catch (_) {}
+  }
+
+  void setSubtitleBold(bool bold) {
+    subBold = bold;
+    try {
+      (player.platform as dynamic)?.setProperty('sub-bold', bold ? 'yes' : 'no');
+    } catch (_) {}
+  }
+
+  void setSubtitleBorderSize(double size) {
+    subBorderSize = size;
+    try {
+      (player.platform as dynamic)?.setProperty('sub-border-size', size.toStringAsFixed(1));
+    } catch (_) {}
+  }
+
+  void setSubtitlePosition(int pos) {
+    subPosition = pos.clamp(0, 100);
+    try {
+      (player.platform as dynamic)?.setProperty('sub-pos', subPosition.toString());
+    } catch (_) {}
+  }
+
+  void resetSubtitleAppearance() {
+    subColor = const Color(0xFFFFFFFF);
+    subFontSize = 48.0;
+    subFontFamily = 'Segoe UI';
+    subBgMode = 'none';
+    subBold = false;
+    subBorderSize = 2.5;
+    subPosition = 100;
+    try {
+      (player.platform as dynamic)?.setProperty('sub-color', '#FFFFFF');
+      (player.platform as dynamic)?.setProperty('sub-font-size', '48');
+      (player.platform as dynamic)?.setProperty('sub-font', 'Segoe UI');
+      (player.platform as dynamic)?.setProperty('sub-back-color', '#00000000');
+      (player.platform as dynamic)?.setProperty('sub-bold', 'no');
+      (player.platform as dynamic)?.setProperty('sub-border-size', '2.5');
+      (player.platform as dynamic)?.setProperty('sub-pos', '100');
     } catch (_) {}
   }
 

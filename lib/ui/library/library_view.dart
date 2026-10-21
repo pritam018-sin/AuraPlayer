@@ -903,8 +903,8 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     return FrostedGlass(
       borderRadius: 16,
       padding: EdgeInsets.zero,
-      fillColor: const Color(0xFF111118).withValues(alpha: 0.8),
-      borderColor: AppTheme.glassBorder,
+      fillColor: const Color(0xFF10121A).withValues(alpha: 0.65),
+      borderColor: const Color(0x38FFFFFF),
       onTap: () {
         ref.read(playlistProvider.notifier).addItem(
               PlaylistItem(path: file.path, title: cleanTitle),
@@ -1118,15 +1118,22 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                             ),
                           ],
                           child: Container(
-                            width: 26,
-                            height: 26,
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.65),
+                              color: Colors.black.withValues(alpha: 0.72),
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.0),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: const Center(
-                              child: Icon(CupertinoIcons.ellipsis, size: 13, color: Colors.white),
+                              child: Icon(Icons.more_vert_rounded, size: 16, color: Colors.white),
                             ),
                           ),
                         ),
@@ -1524,12 +1531,12 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: Colors.white.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
                 border: Border.all(color: AppTheme.glassBorder, width: 0.8),
               ),
               child: const Center(
-                child: Icon(CupertinoIcons.ellipsis, size: 13, color: Colors.white70),
+                child: Icon(Icons.more_vert_rounded, size: 16, color: Colors.white70),
               ),
             ),
           ),

@@ -1,3 +1,4 @@
+import '../../player/track_formatters.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -669,9 +670,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
           else
             ...tracks.map((t) {
               final isSel = t.id == currentAudio.id;
-              final label = (t.title?.isNotEmpty ?? false)
-                  ? t.title!
-                  : (t.language?.isNotEmpty ?? false ? t.language! : 'Track ${t.id}');
+              final label = TrackFormatters.formatAudioTrack(t);
               return _trackRow(
                 title: label,
                 isSelected: isSel,
@@ -698,6 +697,230 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Live Preview Card
+          _sectionHeader('LIVE SUBTITLE PREVIEW', 'Real-time rendering'),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            height: 100,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.glassBorder),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF141722),
+                  Color(0xFF0A0C12),
+                ],
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 8,
+                  left: 12,
+                  child: Text(
+                    'Preview Window',
+                    style: AppTheme.caption.copyWith(fontSize: 10, color: AppTheme.textTertiary),
+                  ),
+                ),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: wrapper.subBgMode == 'none'
+                          ? Colors.transparent
+                          : (wrapper.subBgMode == 'glass'
+                              ? Colors.black.withValues(alpha: 0.55)
+                              : Colors.black.withValues(alpha: 0.85)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'AuraPlayer Cinema • Subtitle Styling Preview',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: wrapper.subFontFamily,
+                        color: wrapper.subColor,
+                        fontSize: (wrapper.subFontSize * 0.35).clamp(13.0, 26.0),
+                        fontWeight: wrapper.subBold ? FontWeight.w800 : FontWeight.w500,
+                        shadows: wrapper.subBgMode == 'none'
+                            ? const [
+                                Shadow(color: Colors.black, offset: Offset(1.5, 1.5), blurRadius: 3),
+                                Shadow(color: Colors.black, offset: Offset(-1.5, -1.5), blurRadius: 3),
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          const Divider(color: AppTheme.glassBorder, height: 1),
+          const SizedBox(height: 16),
+
+          // Customization Controls
+          _sectionHeader('FONT & COLOR CUSTOMIZATION', ''),
+          const SizedBox(height: 12),
+
+          // Subtitle Color Palette
+          Text('TEXT COLOR', style: AppTheme.caption.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _subColorChip('Classic White', const Color(0xFFFFFFFF), wrapper),
+              _subColorChip('Cinema Yellow', const Color(0xFFFFFF00), wrapper),
+              _subColorChip('Electric Cyan', const Color(0xFF00E5FF), wrapper),
+              _subColorChip('Neon Emerald', const Color(0xFF10B981), wrapper),
+              _subColorChip('Cinema Gold', const Color(0xFFFBBF24), wrapper),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Background Style: None, Glass Box, Solid Box
+          Text('BACKGROUND BOX', style: AppTheme.caption.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _subOptionChip('None (Outline)', wrapper.subBgMode == 'none', () {
+                wrapper.setSubtitleBgMode('none');
+                setState(() {});
+              }),
+              const SizedBox(width: 8),
+              _subOptionChip('Glass Box (50%)', wrapper.subBgMode == 'glass', () {
+                wrapper.setSubtitleBgMode('glass');
+                setState(() {});
+              }),
+              const SizedBox(width: 8),
+              _subOptionChip('Solid Dark (85%)', wrapper.subBgMode == 'opaque', () {
+                wrapper.setSubtitleBgMode('opaque');
+                setState(() {});
+              }),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Font Size & Weight
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('FONT SIZE', style: AppTheme.caption.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _subOptionChip('Small', wrapper.subFontSize == 36.0, () {
+                          wrapper.setSubtitleFontSize(36.0);
+                          setState(() {});
+                        }),
+                        const SizedBox(width: 6),
+                        _subOptionChip('Normal', wrapper.subFontSize == 48.0, () {
+                          wrapper.setSubtitleFontSize(48.0);
+                          setState(() {});
+                        }),
+                        const SizedBox(width: 6),
+                        _subOptionChip('Large', wrapper.subFontSize == 60.0, () {
+                          wrapper.setSubtitleFontSize(60.0);
+                          setState(() {});
+                        }),
+                        const SizedBox(width: 6),
+                        _subOptionChip('Hero', wrapper.subFontSize == 76.0, () {
+                          wrapper.setSubtitleFontSize(76.0);
+                          setState(() {});
+                        }),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('BOLD TEXT', style: AppTheme.caption.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
+                  const SizedBox(height: 8),
+                  CupertinoSwitch(
+                    value: wrapper.subBold,
+                    activeTrackColor: AppTheme.accent,
+                    onChanged: (val) {
+                      wrapper.setSubtitleBold(val);
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Font Family
+          Text('FONT FAMILY', style: AppTheme.caption.copyWith(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _subOptionChip('Segoe UI', wrapper.subFontFamily == 'Segoe UI', () {
+                wrapper.setSubtitleFontFamily('Segoe UI');
+                setState(() {});
+              }),
+              const SizedBox(width: 8),
+              _subOptionChip('Arial', wrapper.subFontFamily == 'Arial', () {
+                wrapper.setSubtitleFontFamily('Arial');
+                setState(() {});
+              }),
+              const SizedBox(width: 8),
+              _subOptionChip('Trebuchet MS', wrapper.subFontFamily == 'Trebuchet MS', () {
+                wrapper.setSubtitleFontFamily('Trebuchet MS');
+                setState(() {});
+              }),
+              const SizedBox(width: 8),
+              _subOptionChip('Impact', wrapper.subFontFamily == 'Impact', () {
+                wrapper.setSubtitleFontFamily('Impact');
+                setState(() {});
+              }),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Reset Appearance Button
+          InkWell(
+            onTap: () {
+              wrapper.resetSubtitleAppearance();
+              setState(() {});
+            },
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppTheme.glassBorder),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(CupertinoIcons.arrow_counterclockwise, size: 12, color: AppTheme.textSecondary),
+                  const SizedBox(width: 6),
+                  Text('Reset Subtitle Appearance', style: AppTheme.caption.copyWith(color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 22),
+          const Divider(color: AppTheme.glassBorder, height: 1),
+          const SizedBox(height: 16),
+
           // Subtitle Sync Delay
           _sectionHeader('SUBTITLE SYNC DELAY', _formatDelay(wrapper.subtitleDelay)),
           const SizedBox(height: 10),
@@ -738,7 +961,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _sectionHeader('SUBTITLE TRACKS', ''),
+              _sectionHeader('SUBTITLE TRACKS', '${tracks.length} tracks detected'),
               ElevatedButton.icon(
                 onPressed: () async {
                   final res = await FilePicker.platform.pickFiles(
@@ -776,9 +999,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
 
           ...tracks.map((s) {
             final isSel = s.id == currentSub.id;
-            final label = (s.title?.isNotEmpty ?? false)
-                ? s.title!
-                : (s.language?.isNotEmpty ?? false ? s.language! : 'Subtitle ${s.id}');
+            final label = TrackFormatters.formatSubtitleTrack(s);
             return _trackRow(
               title: label,
               isSelected: isSel,
@@ -789,6 +1010,77 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
             );
           }),
         ],
+      ),
+    );
+  }
+
+  Widget _subColorChip(String name, Color color, AuraPlayerWrapper wrapper) {
+    final isSelected = wrapper.subColor.toARGB32() == color.toARGB32();
+    return InkWell(
+      onTap: () {
+        wrapper.setSubtitleColor(color);
+        setState(() {});
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? color : AppTheme.glassBorder,
+            width: isSelected ? 1.5 : 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white24, width: 0.8),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              name,
+              style: AppTheme.caption.copyWith(
+                color: isSelected ? Colors.white : AppTheme.textSecondary,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 11.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _subOptionChip(String title, bool isSelected, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.accent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppTheme.accent : AppTheme.glassBorder,
+            width: isSelected ? 1.5 : 0.8,
+          ),
+        ),
+        child: Text(
+          title,
+          style: AppTheme.caption.copyWith(
+            color: isSelected ? Colors.white : AppTheme.textSecondary,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            fontSize: 11.5,
+          ),
+        ),
       ),
     );
   }

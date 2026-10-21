@@ -1,3 +1,4 @@
+import '../../player/track_formatters.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../player/player_controller.dart';
@@ -30,8 +31,8 @@ class MediaInfoModal extends StatelessWidget {
     final height = state.height ?? 0;
     final resolutionStr = (width > 0 && height > 0) ? '${width}x$height' : 'Unknown';
 
-    final audioInfo = tracks.audio.map((a) => a.title ?? a.language ?? 'Audio Stream ${a.id}').join(', ');
-    final subInfo = tracks.subtitle.map((s) => s.title ?? s.language ?? 'Subtitle ${s.id}').join(', ');
+    final audioInfo = tracks.audio.map((a) => TrackFormatters.formatAudioTrack(a)).join(', ');
+    final subInfo = tracks.subtitle.map((s) => TrackFormatters.formatSubtitleTrack(s)).join(', ');
 
     return Center(
       child: Material(

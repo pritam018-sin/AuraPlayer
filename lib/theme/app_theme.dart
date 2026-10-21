@@ -26,9 +26,9 @@ class AppTheme {
   static const Color trafficYellow = Color(0xFFFFBD2E);
   static const Color trafficGreen = Color(0xFF27C93F);
 
-  static const Color glassBorder = Color(0x1AFFFFFF); // 10% white
-  static const Color glassBorderHover = Color(0x33FFFFFF); // 20% white
-  static const Color glassFill = Color(0xCC0F1117); // 80% opacity
+  static const Color glassBorder = Color(0x2EFFFFFF); // 18% crisp specular edge
+  static const Color glassBorderHover = Color(0x55FFFFFF); // 33% white
+  static const Color glassFill = Color(0xD90D0F15); // 85% opacity rich obsidian
   static const Color controlPillFill = Color(0xE0171A23); // 88% opacity
 
   // Gradients
