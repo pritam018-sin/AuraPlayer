@@ -20,7 +20,7 @@ public class WindowsShellThumbnail
         [PreserveSig]
         int GetImage(
             [In, MarshalAs(UnmanagedType.Struct)] SIZE size,
-            [In] SIIGBF flags,
+            [In] int flags,
             [Out] out IntPtr phbm);
     }
 
@@ -30,17 +30,6 @@ public class WindowsShellThumbnail
         public int cx;
         public int cy;
         public SIZE(int cx, int cy) { this.cx = cx; this.cy = cy; }
-    }
-
-    [Flags]
-    private enum SIIGBF
-    {
-        SIIGBF_RESIZETOFIT = 0x00,
-        SIIGBF_BIGGERSIZEOK = 0x01,
-        SIIGBF_MEMORYONLY = 0x02,
-        SIIGBF_ICONONLY = 0x04,
-        SIIGBF_THUMBNAILONLY = 0x08,
-        SIIGBF_INCACHEONLY = 0x10,
     }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
@@ -63,7 +52,14 @@ public class WindowsShellThumbnail
             int hr = SHCreateItemFromParsingName(filePath, IntPtr.Zero, uuid, out factory);
             if (hr != 0 || factory == null) return false;
 
-            hr = factory.GetImage(new SIZE(width, height), SIIGBF.SIIGBF_RESIZETOFIT | SIIGBF.SIIGBF_BIGGERSIZEOK, out hBitmap);
+            // Try first with THUMBNAILONLY (0x08)
+            hr = factory.GetImage(new SIZE(width, height), 0x08, out hBitmap);
+            if (hr != 0 || hBitmap == IntPtr.Zero)
+            {
+                // Fallback to RESIZETOFIT | BIGGERSIZEOK (0x01)
+                hr = factory.GetImage(new SIZE(width, height), 0x01, out hBitmap);
+            }
+
             if (hr != 0 || hBitmap == IntPtr.Zero) return false;
 
             using (Bitmap bmp = Bitmap.FromHbitmap(hBitmap))
@@ -97,10 +93,10 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
             $v = $parts[0].Trim()
             $o = $parts[1].Trim()
             if ($v -and $o) {
-                [WindowsShellThumbnail]::Extract($v, $o, 400, 260) | Out-Null
+                [WindowsShellThumbnail]::Extract($v, $o, 480, 270) | Out-Null
             }
         }
     }
 } elseif ($VideoPath -and $OutputPath) {
-    [WindowsShellThumbnail]::Extract($VideoPath, $OutputPath, 400, 260) | Out-Null
+    [WindowsShellThumbnail]::Extract($VideoPath, $OutputPath, 480, 270) | Out-Null
 }

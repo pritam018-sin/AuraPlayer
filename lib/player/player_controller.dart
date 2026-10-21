@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
+import '../services/thumbnail_service.dart';
 import '../settings/storage_service.dart';
 import 'player_models.dart';
 
@@ -61,6 +62,9 @@ class AuraPlayerWrapper {
       final path = currentFilePath;
       // Never save live stream position
       if (path != null && !path.startsWith('http://') && !path.startsWith('https://')) {
+        if (pos.inSeconds >= 1) {
+          ThumbnailService.captureAndSaveFromPlayer(player, path);
+        }
         if (pos.inSeconds > 2) {
           storageService.setPosition(path, pos);
         }

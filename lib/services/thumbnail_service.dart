@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:media_kit/media_kit.dart';
 
 class ThumbnailService {
   static Directory? _cacheDir;
   static File? _scriptFile;
   static bool _isBatchRunning = false;
   static final Set<String> _pendingVideos = {};
+  static final Set<String> _capturedVideos = {};
   static final ValueNotifier<int> updateNotifier = ValueNotifier<int>(0);
 
   static const String _powershellScriptContent = r'''
@@ -32,7 +34,7 @@ public class WindowsShellThumbnail
         [PreserveSig]
         int GetImage(
             [In, MarshalAs(UnmanagedType.Struct)] SIZE size,
-            [In] SIIGBF flags,
+            [In] int flags,
             [Out] out IntPtr phbm);
     }
 
@@ -42,17 +44,6 @@ public class WindowsShellThumbnail
         public int cx;
         public int cy;
         public SIZE(int cx, int cy) { this.cx = cx; this.cy = cy; }
-    }
-
-    [Flags]
-    private enum SIIGBF
-    {
-        SIIGBF_RESIZETOFIT = 0x00,
-        SIIGBF_BIGGERSIZEOK = 0x01,
-        SIIGBF_MEMORYONLY = 0x02,
-        SIIGBF_ICONONLY = 0x04,
-        SIIGBF_THUMBNAILONLY = 0x08,
-        SIIGBF_INCACHEONLY = 0x10,
     }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
@@ -75,7 +66,14 @@ public class WindowsShellThumbnail
             int hr = SHCreateItemFromParsingName(filePath, IntPtr.Zero, uuid, out factory);
             if (hr != 0 || factory == null) return false;
 
-            hr = factory.GetImage(new SIZE(width, height), SIIGBF.SIIGBF_RESIZETOFIT | SIIGBF.SIIGBF_BIGGERSIZEOK, out hBitmap);
+            // Try first with THUMBNAILONLY (0x08)
+            hr = factory.GetImage(new SIZE(width, height), 0x08, out hBitmap);
+            if (hr != 0 || hBitmap == IntPtr.Zero)
+            {
+                // Fallback to RESIZETOFIT | BIGGERSIZEOK (0x01)
+                hr = factory.GetImage(new SIZE(width, height), 0x01, out hBitmap);
+            }
+
             if (hr != 0 || hBitmap == IntPtr.Zero) return false;
 
             using (Bitmap bmp = Bitmap.FromHbitmap(hBitmap))
@@ -109,12 +107,12 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
             $v = $parts[0].Trim()
             $o = $parts[1].Trim()
             if ($v -and $o) {
-                [WindowsShellThumbnail]::Extract($v, $o, 420, 280) | Out-Null
+                [WindowsShellThumbnail]::Extract($v, $o, 480, 270) | Out-Null
             }
         }
     }
 } elseif ($VideoPath -and $OutputPath) {
-    [WindowsShellThumbnail]::Extract($VideoPath, $OutputPath, 420, 280) | Out-Null
+    [WindowsShellThumbnail]::Extract($VideoPath, $OutputPath, 480, 270) | Out-Null
 }
 ''';
 
@@ -135,9 +133,7 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
       }
 
       _scriptFile = File('${appDir.path}\\extract_thumb.ps1');
-      if (!_scriptFile!.existsSync() || _scriptFile!.lengthSync() < 100) {
-        _scriptFile!.writeAsStringSync(_powershellScriptContent);
-      }
+      _scriptFile!.writeAsStringSync(_powershellScriptContent);
     } catch (e) {
       debugPrint('ThumbnailService init error: $e');
     }
@@ -149,8 +145,14 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
       final f = File(videoPath);
       if (f.existsSync()) size = f.lengthSync();
     } catch (_) {}
-    final hash = videoPath.toLowerCase().hashCode.abs();
-    return 'thumb_${hash}_$size.jpg';
+
+    // Deterministic DJB2 hash across all sessions & machines
+    int hash = 5381;
+    final normalized = videoPath.toLowerCase();
+    for (int i = 0; i < normalized.length; i++) {
+      hash = (((hash << 5) + hash) + normalized.codeUnitAt(i)) & 0xFFFFFFFF;
+    }
+    return 'thumb_${hash.toRadixString(16)}_$size.jpg';
   }
 
   static File? getCachedThumbnail(String videoPath) {
@@ -161,6 +163,33 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
       return file;
     }
     return null;
+  }
+
+  static Future<void> saveThumbnailFromBytes(String videoPath, Uint8List bytes) async {
+    await init();
+    if (_cacheDir == null || bytes.isEmpty) return;
+    try {
+      final filename = _safeFilename(videoPath);
+      final outFile = File('${_cacheDir!.path}\\$filename');
+      await outFile.writeAsBytes(bytes);
+      updateNotifier.value++;
+    } catch (e) {
+      debugPrint('Save thumbnail error: $e');
+    }
+  }
+
+  /// Automatically captures and saves a high-res screenshot from the active Player
+  static Future<void> captureAndSaveFromPlayer(Player player, String videoPath) async {
+    if (_capturedVideos.contains(videoPath)) return;
+    _capturedVideos.add(videoPath);
+
+    try {
+      await Future.delayed(const Duration(milliseconds: 1200));
+      final bytes = await player.screenshot(format: 'image/jpeg');
+      if (bytes != null && bytes.isNotEmpty) {
+        await saveThumbnailFromBytes(videoPath, bytes);
+      }
+    } catch (_) {}
   }
 
   static Future<File?> generateThumbnail(String videoPath) async {
@@ -219,13 +248,11 @@ if ($BatchListFile -and (Test-Path $BatchListFile)) {
 
     if (missing.isEmpty) return;
 
-    // Run batch in background without blocking UI
     _runBatchAsync(missing);
   }
 
   static Future<void> _runBatchAsync(List<MapEntry<String, String>> items) async {
     if (_isBatchRunning) {
-      // Re-queue after small delay
       await Future.delayed(const Duration(seconds: 1));
     }
     _isBatchRunning = true;
