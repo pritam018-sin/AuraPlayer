@@ -1,5 +1,4 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import '../../player/player_controller.dart';
@@ -69,13 +68,13 @@ class _AudioSubtitleSheetState extends State<AudioSubtitleSheet> {
                   children: [
                     Row(
                       children: [
-                        const Icon(CupertinoIcons.slider_horizontal_3, size: 20, color: AppTheme.accent),
+                        const Icon(Icons.tune_rounded, size: 20, color: AppTheme.accent),
                         const SizedBox(width: 10),
                         Text('Tracks & Subtitles', style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(CupertinoIcons.clear_circled_solid, size: 20, color: AppTheme.textSecondary),
+                      icon: const Icon(Icons.close_rounded, size: 20, color: AppTheme.textSecondary),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -122,7 +121,7 @@ class _AudioSubtitleSheetState extends State<AudioSubtitleSheet> {
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 child: Row(
                                   children: [
-                                    const Icon(CupertinoIcons.add, size: 13, color: AppTheme.accent),
+                                    const Icon(Icons.add_rounded, size: 15, color: AppTheme.accent),
                                     const SizedBox(width: 4),
                                     Text('Add .srt/.ass', style: AppTheme.caption.copyWith(color: AppTheme.accent)),
                                   ],
@@ -241,7 +240,7 @@ class _AudioSubtitleSheetState extends State<AudioSubtitleSheet> {
               ),
             ),
             if (isSelected)
-              const Icon(CupertinoIcons.checkmark, size: 16, color: AppTheme.accent),
+              const Icon(Icons.check_rounded, size: 16, color: AppTheme.accent),
           ],
         ),
       ),

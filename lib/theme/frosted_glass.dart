@@ -20,13 +20,15 @@ class FrostedGlass extends StatelessWidget {
     this.margin,
     this.fillColor,
     this.borderColor,
-    this.blur = 28.0,
+    this.blur = 36.0,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = fillColor ?? AppTheme.glassFill;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final baseColor = fillColor ?? (isLight ? AppTheme.lightSurface : AppTheme.glassFill);
+    final defaultBorder = isLight ? AppTheme.lightGlassBorder : const Color(0x38FFFFFF);
 
     Widget content = ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
@@ -39,33 +41,40 @@ class FrostedGlass extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                baseColor.withValues(alpha: 0.68),
-                baseColor.withValues(alpha: 0.38),
-              ],
+              colors: isLight
+                  ? [
+                      (fillColor ?? Colors.white).withValues(alpha: 0.32),
+                      (fillColor ?? Colors.white).withValues(alpha: 0.12),
+                    ]
+                  : [
+                      baseColor.withValues(alpha: 0.18),
+                      baseColor.withValues(alpha: 0.06),
+                    ],
             ),
             border: Border.all(
-              color: borderColor ?? const Color(0x38FFFFFF),
-              width: 1.1,
+              color: borderColor ?? defaultBorder,
+              width: 1.0,
             ),
             boxShadow: [
               // Deep ambient drop shadow
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
-                blurRadius: 32,
+                color: isLight
+                    ? const Color(0xFF0F172A).withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.35),
+                blurRadius: 28,
                 spreadRadius: 1,
-                offset: const Offset(0, 10),
+                offset: const Offset(0, 8),
               ),
               // Specular top light refraction edge
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.07),
+                color: Colors.white.withValues(alpha: isLight ? 0.40 : 0.08),
                 blurRadius: 1,
                 spreadRadius: 0,
                 offset: const Offset(0, 1),
               ),
               // Electric aura ambient glow
               BoxShadow(
-                color: AppTheme.accent.withValues(alpha: 0.04),
+                color: AppTheme.accent.withValues(alpha: 0.05),
                 blurRadius: 20,
                 spreadRadius: 0,
               ),

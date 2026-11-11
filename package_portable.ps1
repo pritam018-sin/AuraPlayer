@@ -22,6 +22,14 @@ if (-not (Test-Path $portableFolder)) {
 # Copy all runtime files into portable folder
 Copy-Item -Path "$releaseDir\*" -Destination $portableFolder -Recurse -Force -Exclude "*.exp","*.lib"
 
+# Guarantee complete 1.6MB Material Icons font (prevents tree-shaking icon invisibility bug)
+$sdkFont = "C:\src\flutter\bin\cache\artifacts\material_fonts\materialicons-regular.otf"
+if (Test-Path $sdkFont) {
+    Copy-Item -Path $sdkFont -Destination "$portableFolder\data\flutter_assets\fonts\MaterialIcons-Regular.otf" -Force
+    Copy-Item -Path $sdkFont -Destination "$releaseDir\data\flutter_assets\fonts\MaterialIcons-Regular.otf" -Force
+    Write-Host "Ensured complete 1.65MB Material Icons font is bundled."
+}
+
 # Add README.txt
 $readme = @"
 ====================================================================

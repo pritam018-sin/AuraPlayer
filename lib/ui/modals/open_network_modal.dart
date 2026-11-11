@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../player/player_models.dart';
 import '../../state/player_provider.dart';
@@ -12,8 +12,11 @@ class OpenNetworkModal extends ConsumerStatefulWidget {
   static Future<void> show(BuildContext context) {
     return showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
-      builder: (ctx) => const OpenNetworkModal(),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: const OpenNetworkModal(),
+      ),
     );
   }
 
@@ -62,13 +65,26 @@ class _OpenNetworkModalState extends ConsumerState<OpenNetworkModal> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+    final cardBg = isDark
+        ? const Color(0xFF0C101A).withValues(alpha: 0.45)
+        : Colors.white.withValues(alpha: 0.65);
+    final fieldBg = isDark
+        ? const Color(0xFF131522).withValues(alpha: 0.45)
+        : Colors.white.withValues(alpha: 0.85);
+
     return Center(
       child: Material(
         color: Colors.transparent,
         child: FrostedGlass(
           borderRadius: 20,
           padding: const EdgeInsets.all(24),
-          fillColor: AppTheme.surface.withValues(alpha: 0.90),
+          blur: 35,
+          fillColor: cardBg,
+          borderColor: borderCol,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: Column(
@@ -80,15 +96,20 @@ class _OpenNetworkModalState extends ConsumerState<OpenNetworkModal> {
                   children: [
                     Row(
                       children: [
-                        const Icon(CupertinoIcons.globe, size: 20, color: AppTheme.accent),
+                        const Icon(Icons.public_rounded, size: 20, color: AppTheme.accent),
                         const SizedBox(width: 10),
-                        Text('Open Network Stream (URL)',
-                            style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          'Open Network Stream (URL)',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(CupertinoIcons.clear_circled_solid,
-                          size: 20, color: AppTheme.textSecondary),
+                      icon: Icon(Icons.close_rounded, size: 20, color: textSecondary),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -96,27 +117,27 @@ class _OpenNetworkModalState extends ConsumerState<OpenNetworkModal> {
                 const SizedBox(height: 12),
                 Text(
                   'Enter an HTTP, HTTPS, HLS (.m3u8), or RTSP streaming link:',
-                  style: AppTheme.caption,
+                  style: TextStyle(fontSize: 12, color: textSecondary),
                 ),
                 const SizedBox(height: 14),
 
                 TextField(
                   controller: _urlController,
                   autofocus: true,
-                  style: AppTheme.bodySmall,
+                  style: TextStyle(color: textPrimary, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'https://example.com/live/stream.m3u8',
-                    hintStyle: AppTheme.caption.copyWith(color: AppTheme.textTertiary),
+                    hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7), fontSize: 13),
                     filled: true,
-                    fillColor: AppTheme.surfaceSecondary,
+                    fillColor: fieldBg,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppTheme.glassBorder),
+                      borderSide: BorderSide(color: borderCol),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppTheme.glassBorder),
+                      borderSide: BorderSide(color: borderCol),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -132,18 +153,20 @@ class _OpenNetworkModalState extends ConsumerState<OpenNetworkModal> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.textSecondary),
+                      style: TextButton.styleFrom(foregroundColor: textSecondary),
                       child: const Text('Cancel'),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: _isValid ? _submit : null,
-                      icon: const Icon(CupertinoIcons.play_arrow_solid, size: 14),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 16),
                       label: const Text('Play Stream'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accent,
                         foregroundColor: const Color(0xFF04131F),
+                        elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],

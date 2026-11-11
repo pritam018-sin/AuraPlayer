@@ -8,6 +8,7 @@ class StorageService {
   static const String _keyMuted = 'aura_muted';
   static const String _keySpeed = 'aura_speed';
   static const String _keyPositionPrefix = 'aura_pos_';
+  static const String _keyThemeMode = 'aura_theme_mode';
 
   final SharedPreferences _prefs;
 
@@ -17,6 +18,10 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     return StorageService(prefs);
   }
+
+  // Theme Mode ('dark' or 'light')
+  String getThemeMode() => _prefs.getString(_keyThemeMode) ?? 'dark';
+  Future<void> setThemeMode(String mode) => _prefs.setString(_keyThemeMode, mode);
 
   // Volume
   double getVolume() => _prefs.getDouble(_keyVolume) ?? 100.0;

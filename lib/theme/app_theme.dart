@@ -92,16 +92,40 @@ class AppTheme {
     letterSpacing: -0.5,
   );
 
+  // Light Glass Mode Palette (Alabaster Glass & Royal Sapphire Accents)
+  static const Color lightBackground = Color(0xFFF1F5F9);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightSurfaceSecondary = Color(0xFFF8FAFC);
+  static const Color lightGlassBorder = Color(0x28000000);
+  static const Color lightTextPrimary = Color(0xFF0F172A);
+  static const Color lightTextSecondary = Color(0xFF475569);
+
+  // Context-aware / Theme-aware text & color helpers
+  static Color textColor(bool isDark) => isDark ? textPrimary : lightTextPrimary;
+  static Color textColorSecondary(bool isDark) => isDark ? textSecondary : lightTextSecondary;
+  static Color accentColor(bool isDark) => isDark ? accentCyan : const Color(0xFF0284C7);
+  static Color border(bool isDark) => isDark ? glassBorder : lightGlassBorder;
+
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: background,
       primaryColor: accent,
-      fontFamily: 'Inter',
       colorScheme: const ColorScheme.dark(
         primary: accent,
         surface: surface,
         onSurface: textPrimary,
+      ),
+      iconTheme: const IconThemeData(
+        color: Color(0xFFF8FAFC),
+        size: 20,
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: textPrimary),
+        bodyMedium: TextStyle(color: textPrimary),
+        bodySmall: TextStyle(color: textSecondary),
+        headlineMedium: TextStyle(color: textPrimary),
+        titleMedium: TextStyle(color: textPrimary),
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
@@ -117,6 +141,46 @@ class AppTheme {
           ],
         ),
         textStyle: caption.copyWith(color: textPrimary, fontWeight: FontWeight.w500),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      ),
+    );
+  }
+
+  static ThemeData get lightTheme {
+    return ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: lightBackground,
+      primaryColor: accentDark,
+      colorScheme: const ColorScheme.light(
+        primary: accentDark,
+        surface: lightSurface,
+        onSurface: lightTextPrimary,
+      ),
+      iconTheme: const IconThemeData(
+        color: Color(0xFF0F172A),
+        size: 20,
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: lightTextPrimary),
+        bodyMedium: TextStyle(color: lightTextPrimary),
+        bodySmall: TextStyle(color: lightTextSecondary),
+        headlineMedium: TextStyle(color: lightTextPrimary),
+        titleMedium: TextStyle(color: lightTextPrimary),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: lightGlassBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        textStyle: caption.copyWith(color: lightTextPrimary, fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       ),
     );

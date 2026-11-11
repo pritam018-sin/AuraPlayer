@@ -48,10 +48,18 @@ class AuraPlayerWrapper {
         ready: null,
       ),
     );
-    videoController = VideoController(player);
+    videoController = VideoController(
+      player,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: true,
+        hwdec: 'auto-safe',
+      ),
+    );
 
     // Apply resilient network properties for MPV live streaming & hardware decode
     try {
+      (player.platform as dynamic)?.setProperty('hwdec', 'auto-safe');
+      (player.platform as dynamic)?.setProperty('vo', 'libmpv');
       (player.platform as dynamic)?.setProperty(
         'user-agent',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -72,6 +80,7 @@ class AuraPlayerWrapper {
     player.stream.width.listen((w) {
       if (w != null && w > 0) {
         isVideoReadyNotifier.value = true;
+        isBufferingNotifier.value = false;
       }
     });
 
@@ -86,8 +95,9 @@ class AuraPlayerWrapper {
     });
 
     player.stream.position.listen((pos) {
-      if (pos > const Duration(milliseconds: 250)) {
+      if (pos > Duration.zero) {
         isVideoReadyNotifier.value = true;
+        isBufferingNotifier.value = false;
       }
 
       // Enforce A-B loop repeat
@@ -170,7 +180,7 @@ class AuraPlayerWrapper {
 
     // Trigger instant loading animation state
     isVideoReadyNotifier.value = false;
-    isBufferingNotifier.value = true;
+    isBufferingNotifier.value = isNetwork;
     streamErrorNotifier.value = null;
 
     // Only resume saved position for offline local files, never for live streams

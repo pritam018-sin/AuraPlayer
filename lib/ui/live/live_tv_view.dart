@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../live/live_models.dart';
@@ -21,14 +20,14 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
   bool _onlyFavorites = false;
 
   final List<Map<String, dynamic>> _categories = [
-    {'id': 'all', 'label': 'All Channels', 'icon': CupertinoIcons.tv},
-    {'id': 'fav', 'label': 'Favorites ⭐', 'icon': CupertinoIcons.star_fill},
-    {'id': 'sports', 'label': 'Live Sports ⚽', 'icon': CupertinoIcons.sportscourt_fill},
-    {'id': 'news', 'label': 'News 24/7 📰', 'icon': CupertinoIcons.news_solid},
-    {'id': 'music', 'label': 'Music Hits 🎵', 'icon': CupertinoIcons.music_note_2},
-    {'id': 'movies', 'label': 'Movies & Cinema 🎬', 'icon': CupertinoIcons.film_fill},
-    {'id': 'kids', 'label': 'Kids & Toons 🧸', 'icon': CupertinoIcons.sparkles},
-    {'id': 'documentary', 'label': 'Discovery & Space 🌍', 'icon': CupertinoIcons.globe},
+    {'id': 'all', 'label': 'All Channels', 'icon': Icons.tv_rounded},
+    {'id': 'fav', 'label': 'Favorites ⭐', 'icon': Icons.star_rounded},
+    {'id': 'sports', 'label': 'Live Sports ⚽', 'icon': Icons.sports_soccer_rounded},
+    {'id': 'news', 'label': 'News 24/7 📰', 'icon': Icons.newspaper_rounded},
+    {'id': 'music', 'label': 'Music Hits 🎵', 'icon': Icons.music_note_rounded},
+    {'id': 'movies', 'label': 'Movies & Cinema 🎬', 'icon': Icons.movie_rounded},
+    {'id': 'kids', 'label': 'Kids & Toons 🧸', 'icon': Icons.child_care_rounded},
+    {'id': 'documentary', 'label': 'Discovery & Space 🌍', 'icon': Icons.public_rounded},
   ];
 
   @override
@@ -46,21 +45,29 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
     ]);
   }
 
-  void _showCustomM3uDialog() {
+  void _showCustomM3uDialog(bool isDark) {
     final controller = TextEditingController();
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+    final dialogBg = isDark ? AppTheme.surface : Colors.white;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: dialogBg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppTheme.glassBorder),
+          side: BorderSide(color: borderCol),
         ),
         title: Row(
           children: [
-            const Icon(CupertinoIcons.link, size: 20, color: AppTheme.accent),
+            const Icon(Icons.link_rounded, size: 20, color: AppTheme.accent),
             const SizedBox(width: 10),
-            Text('Open Custom M3U / IPTV URL', style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              'Open Custom M3U / IPTV URL',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textPrimary),
+            ),
           ],
         ),
         content: Column(
@@ -69,20 +76,20 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
           children: [
             Text(
               'Paste any public or premium IPTV M3U / M3U8 stream URL:',
-              style: AppTheme.caption,
+              style: TextStyle(fontSize: 12.5, color: textSecondary),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
-              style: AppTheme.bodySmall,
+              style: TextStyle(fontSize: 13, color: textPrimary),
               decoration: InputDecoration(
                 hintText: 'https://example.com/playlist.m3u8',
-                hintStyle: AppTheme.caption.copyWith(color: AppTheme.textTertiary),
+                hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7), fontSize: 13),
                 filled: true,
-                fillColor: AppTheme.surfaceSecondary,
+                fillColor: isDark ? AppTheme.surfaceSecondary : const Color(0xFFF1F5F9),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppTheme.glassBorder),
+                  borderSide: BorderSide(color: borderCol),
                 ),
               ),
             ),
@@ -91,7 +98,7 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text('Cancel', style: TextStyle(color: textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -103,10 +110,10 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accent,
-              foregroundColor: Colors.white,
+              foregroundColor: const Color(0xFF04131F),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Load Playlist'),
+            child: const Text('Load Playlist', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -135,19 +142,29 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
   Widget build(BuildContext context) {
     final liveState = ref.watch(liveTvProvider);
     final liveNotifier = ref.read(liveTvProvider.notifier);
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+    final cardBg = isDark
+        ? const Color(0xFF131522).withValues(alpha: 0.18)
+        : Colors.white.withValues(alpha: 0.35);
+
     final filteredChannels = _filterChannels(liveState.channels, liveState.favoriteIds);
     final featuredChannel = liveState.channels.isNotEmpty ? liveState.channels.first : null;
 
     return Container(
-      color: AppTheme.background,
+      color: Colors.transparent,
       child: Column(
         children: [
           // Top Toolbar: Search + Preset Selector + Custom M3U button
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.surface.withValues(alpha: 0.7),
-              border: const Border(bottom: BorderSide(color: AppTheme.glassBorder, width: 0.5)),
+              color: isDark
+                  ? AppTheme.surface.withValues(alpha: 0.22)
+                  : Colors.white.withValues(alpha: 0.38),
+              border: Border(bottom: BorderSide(color: borderCol, width: 0.5)),
             ),
             child: Row(
               children: [
@@ -156,21 +173,21 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                   child: Container(
                     height: 38,
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceSecondary,
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.glassBorder),
+                      border: Border.all(color: borderCol),
                     ),
                     child: TextField(
                       controller: _searchController,
-                      style: AppTheme.bodySmall,
+                      style: TextStyle(fontSize: 13, color: textPrimary),
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         hintText: 'Search 30,000+ live TV channels (Sports, News, Bollywood, Cinema)...',
-                        hintStyle: AppTheme.caption.copyWith(color: AppTheme.textTertiary),
-                        prefixIcon: const Icon(CupertinoIcons.search, size: 16, color: AppTheme.textSecondary),
+                        hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7), fontSize: 13),
+                        prefixIcon: Icon(Icons.search_rounded, size: 16, color: textSecondary),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(CupertinoIcons.clear_circled_solid, size: 14, color: AppTheme.textTertiary),
+                                icon: Icon(Icons.cancel_rounded, size: 15, color: textSecondary),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {});
@@ -189,17 +206,21 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceSecondary,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.glassBorder),
+                    border: Border.all(color: borderCol),
                   ),
                   child: Row(
                     children: [
-                      const Icon(CupertinoIcons.antenna_radiowaves_left_right, size: 14, color: AppTheme.accentCyan),
+                      const Icon(Icons.settings_input_antenna_rounded, size: 15, color: AppTheme.accentCyan),
                       const SizedBox(width: 8),
                       Text(
                         liveState.activePresetTitle,
-                        style: AppTheme.caption.copyWith(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -208,16 +229,16 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
 
                 // Custom M3U Button
                 ElevatedButton.icon(
-                  onPressed: _showCustomM3uDialog,
-                  icon: const Icon(CupertinoIcons.plus_circle, size: 15),
+                  onPressed: () => _showCustomM3uDialog(isDark),
+                  icon: const Icon(Icons.add_link_rounded, size: 16),
                   label: const Text('Add M3U URL'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.accent,
-                    foregroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF04131F),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
-                    textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -229,8 +250,10 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 24),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceSecondary.withValues(alpha: 0.3),
-              border: const Border(bottom: BorderSide(color: AppTheme.glassBorder, width: 0.5)),
+              color: isDark
+                  ? AppTheme.surfaceSecondary.withValues(alpha: 0.20)
+                  : const Color(0xFFE2E8F0).withValues(alpha: 0.40),
+              border: Border(bottom: BorderSide(color: borderCol, width: 0.5)),
             ),
             child: ListView(
               scrollDirection: Axis.horizontal,
@@ -239,6 +262,7 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                   label: '⭐ Verified Fast',
                   isSelected: liveState.activePresetTitle == 'Curated Channels',
                   onTap: () => liveNotifier.resetToCurated(),
+                  isDark: isDark,
                 ),
                 ...LiveService.presets.map((preset) {
                   final isSelected = liveState.activePresetTitle == preset.title;
@@ -246,6 +270,7 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                     label: '${preset.icon} ${preset.title}',
                     isSelected: isSelected,
                     onTap: () => liveNotifier.loadPreset(preset),
+                    isDark: isDark,
                   );
                 }),
               ],
@@ -283,10 +308,10 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         gradient: isSelected ? AppTheme.auraGradient : null,
-                        color: isSelected ? null : AppTheme.surfaceSecondary,
+                        color: isSelected ? null : cardBg,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isSelected ? Colors.transparent : AppTheme.glassBorder,
+                          color: isSelected ? Colors.transparent : borderCol,
                         ),
                         boxShadow: isSelected
                             ? [
@@ -303,15 +328,16 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                         children: [
                           Icon(
                             cat['icon'] as IconData,
-                            size: 13,
-                            color: isSelected ? const Color(0xFF04131F) : AppTheme.textSecondary,
+                            size: 14,
+                            color: isSelected ? const Color(0xFF04131F) : textSecondary,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             cat['label'] as String,
-                            style: AppTheme.caption.copyWith(
-                              color: isSelected ? const Color(0xFF04131F) : AppTheme.textSecondary,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isSelected ? const Color(0xFF04131F) : textSecondary,
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                             ),
                           ),
                         ],
@@ -326,13 +352,13 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
           // Main Channels Grid / Content Area
           Expanded(
             child: liveState.isLoading
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(color: AppTheme.accent),
-                        SizedBox(height: 16),
-                        Text('Fetching live IPTV channels from GitHub...', style: TextStyle(color: AppTheme.textSecondary)),
+                        const CircularProgressIndicator(color: AppTheme.accent),
+                        const SizedBox(height: 16),
+                        Text('Fetching live IPTV channels...', style: TextStyle(color: textSecondary)),
                       ],
                     ),
                   )
@@ -341,13 +367,16 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(CupertinoIcons.antenna_radiowaves_left_right, size: 48, color: AppTheme.textTertiary),
+                            Icon(Icons.tv_off_rounded, size: 48, color: textSecondary),
                             const SizedBox(height: 16),
-                            Text('No Live Channels Found', style: AppTheme.headline),
+                            Text(
+                              'No Live Channels Found',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary),
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               _onlyFavorites ? 'You have no favorited channels yet. Tap ⭐ to add channels!' : 'Try selecting another category or preset above.',
-                              style: AppTheme.caption,
+                              style: TextStyle(fontSize: 12.5, color: textSecondary),
                             ),
                           ],
                         ),
@@ -357,7 +386,7 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                         children: [
                           // Hero Featured Channel (if available and no search query)
                           if (_searchController.text.isEmpty && featuredChannel != null && !_onlyFavorites)
-                            _heroFeaturedCard(featuredChannel),
+                            _heroFeaturedCard(featuredChannel, isDark, textPrimary, textSecondary, borderCol),
 
                           const SizedBox(height: 16),
 
@@ -367,7 +396,7 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                             children: [
                               Text(
                                 '${filteredChannels.length} Live Channels Available',
-                                style: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPrimary),
                               ),
                               Row(
                                 children: [
@@ -380,7 +409,10 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  Text('Online HLS Streams', style: AppTheme.caption.copyWith(color: const Color(0xFF22C55E))),
+                                  const Text(
+                                    'Online HLS Streams',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFF22C55E), fontWeight: FontWeight.w600),
+                                  ),
                                 ],
                               ),
                             ],
@@ -402,7 +434,7 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                             itemBuilder: (context, index) {
                               final ch = filteredChannels[index];
                               final isFav = liveState.favoriteIds.contains(ch.id);
-                              return _channelCard(ch, isFav);
+                              return _channelCard(ch, isFav, isDark, textPrimary, textSecondary, borderCol, cardBg);
                             },
                           ),
                           const SizedBox(height: 32),
@@ -418,7 +450,9 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
+    required bool isDark,
   }) {
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
     return Container(
       margin: const EdgeInsets.only(right: 8, top: 6, bottom: 6),
       child: InkWell(
@@ -427,18 +461,20 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.accentCyan.withValues(alpha: 0.25) : Colors.transparent,
+            color: isSelected
+                ? AppTheme.accentCyan.withValues(alpha: isDark ? 0.25 : 0.20)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? AppTheme.accentCyan : AppTheme.glassBorder,
+              color: isSelected ? AppTheme.accentCyan : borderCol,
             ),
           ),
           child: Center(
             child: Text(
               label,
-              style: AppTheme.caption.copyWith(
-                color: isSelected ? AppTheme.accentCyan : AppTheme.textSecondary,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              style: TextStyle(
+                color: isSelected ? (isDark ? AppTheme.accentCyan : const Color(0xFF0284C7)) : (isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 fontSize: 11.5,
               ),
             ),
@@ -448,12 +484,21 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
     );
   }
 
-  Widget _heroFeaturedCard(LiveChannel channel) {
+  Widget _heroFeaturedCard(
+    LiveChannel channel,
+    bool isDark,
+    Color textPrimary,
+    Color textSecondary,
+    Color borderCol,
+  ) {
     return FrostedGlass(
       borderRadius: 18,
       padding: const EdgeInsets.all(20),
-      fillColor: AppTheme.surfaceSecondary.withValues(alpha: 0.7),
-      borderColor: AppTheme.accent.withValues(alpha: 0.4),
+      fillColor: isDark
+          ? const Color(0xFF131522).withValues(alpha: 0.40)
+          : Colors.white.withValues(alpha: 0.65),
+      borderColor: AppTheme.accent.withValues(alpha: 0.5),
+      blur: 35,
       onTap: () => _playChannel(channel),
       child: Row(
         children: [
@@ -473,7 +518,7 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
               ],
             ),
             child: const Center(
-              child: Icon(CupertinoIcons.play_arrow_solid, size: 32, color: Colors.white),
+              child: Icon(Icons.play_arrow_rounded, size: 36, color: Color(0xFF04131F)),
             ),
           ),
           const SizedBox(width: 20),
@@ -503,9 +548,9 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Text(
+                          const Text(
                             'LIVE NOW',
-                            style: AppTheme.caption.copyWith(
+                            style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -519,13 +564,17 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceTertiary,
+                        color: isDark ? const Color(0xFF1E2232) : const Color(0xFFE2E8F0),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: AppTheme.glassBorder),
+                        border: Border.all(color: borderCol),
                       ),
                       child: Text(
                         channel.quality,
-                        style: AppTheme.caption.copyWith(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.accentCyan),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? AppTheme.accentCyan : const Color(0xFF0284C7),
+                        ),
                       ),
                     ),
                   ],
@@ -535,12 +584,12 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                   channel.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTheme.headline.copyWith(fontSize: 18),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${channel.category.toUpperCase()} • ${channel.language} • ${channel.country}',
-                  style: AppTheme.caption.copyWith(color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 12, color: textSecondary),
                 ),
               ],
             ),
@@ -549,15 +598,15 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
           // Watch Live Button
           ElevatedButton.icon(
             onPressed: () => _playChannel(channel),
-            icon: const Icon(CupertinoIcons.play_fill, size: 14),
+            icon: const Icon(Icons.play_arrow_rounded, size: 16),
             label: const Text('WATCH LIVE'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accent,
-              foregroundColor: Colors.white,
+              foregroundColor: const Color(0xFF04131F),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               elevation: 0,
-              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w700),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -565,12 +614,21 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
     );
   }
 
-  Widget _channelCard(LiveChannel channel, bool isFav) {
+  Widget _channelCard(
+    LiveChannel channel,
+    bool isFav,
+    bool isDark,
+    Color textPrimary,
+    Color textSecondary,
+    Color borderCol,
+    Color cardBg,
+  ) {
     return FrostedGlass(
       borderRadius: 14,
       padding: const EdgeInsets.all(12),
-      fillColor: AppTheme.surfaceSecondary.withValues(alpha: 0.45),
-      borderColor: AppTheme.glassBorder,
+      fillColor: cardBg,
+      borderColor: borderCol,
+      blur: 35,
       onTap: () => _playChannel(channel),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -587,9 +645,9 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                       color: const Color(0xFFEF4444).withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(
+                    child: const Text(
                       'LIVE',
-                      style: AppTheme.caption.copyWith(
+                      style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
@@ -600,16 +658,16 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
+                      color: isDark ? Colors.black.withValues(alpha: 0.6) : const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppTheme.glassBorder),
+                      border: Border.all(color: borderCol),
                     ),
                     child: Text(
                       channel.isHd ? 'HD' : 'SD',
-                      style: AppTheme.caption.copyWith(
+                      style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.accentCyan,
+                        color: isDark ? AppTheme.accentCyan : const Color(0xFF0284C7),
                       ),
                     ),
                   ),
@@ -618,9 +676,9 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
               GestureDetector(
                 onTap: () => ref.read(liveTvProvider.notifier).toggleFavorite(channel.id),
                 child: Icon(
-                  isFav ? CupertinoIcons.star_fill : CupertinoIcons.star,
-                  size: 15,
-                  color: isFav ? const Color(0xFFFBBF24) : AppTheme.textTertiary,
+                  isFav ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: 17,
+                  color: isFav ? const Color(0xFFFBBF24) : textSecondary,
                 ),
               ),
             ],
@@ -635,15 +693,15 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceTertiary,
+                  color: isDark ? const Color(0xFF1E2232) : const Color(0xFFCBD5E1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.glassBorder),
+                  border: Border.all(color: borderCol),
                 ),
                 child: Center(
                   child: Icon(
                     _getCategoryIcon(channel.category),
-                    size: 18,
-                    color: AppTheme.accent,
+                    size: 19,
+                    color: isDark ? AppTheme.accent : const Color(0xFF0284C7),
                   ),
                 ),
               ),
@@ -656,14 +714,18 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
                       channel.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '${channel.category.toUpperCase()} • ${channel.country}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTheme.caption.copyWith(fontSize: 10.5, color: AppTheme.textTertiary),
+                      style: TextStyle(fontSize: 10.5, color: textSecondary),
                     ),
                   ],
                 ),
@@ -682,14 +744,18 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
               children: [
                 Text(
                   'Watch Channel',
-                  style: AppTheme.caption.copyWith(
-                    color: AppTheme.accent,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    color: isDark ? AppTheme.accent : const Color(0xFF0284C7),
+                    fontWeight: FontWeight.w700,
                     fontSize: 11,
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(CupertinoIcons.chevron_right, size: 10, color: AppTheme.accent),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 10,
+                  color: isDark ? AppTheme.accent : const Color(0xFF0284C7),
+                ),
               ],
             ),
           ),
@@ -701,19 +767,19 @@ class _LiveTvViewState extends ConsumerState<LiveTvView> {
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {
       case 'sports':
-        return CupertinoIcons.sportscourt_fill;
+        return Icons.sports_soccer_rounded;
       case 'news':
-        return CupertinoIcons.news_solid;
+        return Icons.newspaper_rounded;
       case 'music':
-        return CupertinoIcons.music_note_2;
+        return Icons.music_note_rounded;
       case 'movies':
-        return CupertinoIcons.film_fill;
+        return Icons.movie_rounded;
       case 'kids':
-        return CupertinoIcons.sparkles;
+        return Icons.child_care_rounded;
       case 'documentary':
-        return CupertinoIcons.globe;
+        return Icons.public_rounded;
       default:
-        return CupertinoIcons.tv;
+        return Icons.live_tv_rounded;
     }
   }
 }

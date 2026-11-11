@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -8,10 +7,8 @@ import '../../player/player_controller.dart';
 import '../../player/player_models.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
-import '../modals/media_info_modal.dart';
 import '../modals/open_network_modal.dart';
 import '../modals/shortcuts_guide_modal.dart';
-import '../modals/video_adjustments_modal.dart';
 import '../player/audio_sub_sheet.dart';
 
 class ModernMenuBar extends ConsumerStatefulWidget {
@@ -128,19 +125,19 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
                   children: [
                     _trafficButton(
                       color: AppTheme.trafficRed,
-                      hoverIcon: CupertinoIcons.clear,
+                      hoverIcon: Icons.close_rounded,
                       onTap: () => windowManager.close(),
                     ),
                     const SizedBox(width: 8),
                     _trafficButton(
                       color: AppTheme.trafficYellow,
-                      hoverIcon: CupertinoIcons.minus,
+                      hoverIcon: Icons.remove_rounded,
                       onTap: () => windowManager.minimize(),
                     ),
                     const SizedBox(width: 8),
                     _trafficButton(
                       color: AppTheme.trafficGreen,
-                      hoverIcon: CupertinoIcons.plus,
+                      hoverIcon: Icons.crop_square_rounded,
                       onTap: () async {
                         if (await windowManager.isMaximized()) {
                           windowManager.unmaximize();
@@ -226,7 +223,7 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
                     final path = await widget.playerWrapper.takeSnapshot();
                     _showSnapshotFeedback(path);
                   }),
-                  _menuItem('Video Adjustments & Filters...', '', () => VideoAdjustmentsModal.show(context, widget.playerWrapper)),
+                  _menuItem('Video Adjustments & Filters...', 'I', () => windowNotifier.openInspector(tab: 0)),
                 ],
               ),
 
@@ -247,8 +244,8 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
               _menuButton(
                 label: 'Tools',
                 items: [
-                  _menuItem('Media Information & Codecs', 'Ctrl+I', () => MediaInfoModal.show(context, widget.playerWrapper)),
-                  _menuItem('Effects and Filters', '', () => VideoAdjustmentsModal.show(context, widget.playerWrapper)),
+                  _menuItem('Media Information & Codecs', 'Ctrl+I', () => windowNotifier.openInspector(tab: 3)),
+                  _menuItem('Audio Equalizer & Effects', 'I', () => windowNotifier.openInspector(tab: 1)),
                   _menuItem('Playlist Queue', 'Ctrl+L', () => windowNotifier.togglePlaylist()),
                 ],
               ),
@@ -264,7 +261,7 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
                       context: context,
                       applicationName: 'AuraPlayer',
                       applicationVersion: '1.0.0 (Windows Native Direct3D)',
-                      applicationIcon: const Icon(CupertinoIcons.play_circle_fill, size: 36, color: AppTheme.accent),
+                      applicationIcon: const Icon(Icons.play_circle_fill_rounded, size: 36, color: AppTheme.accent),
                       children: const [
                         Text('Modern Apple-inspired media player with native libmpv hardware playback engine.'),
                       ],
@@ -313,7 +310,7 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
                 children: [
                   _quickActionIcon(
                     tooltip: 'Snapshot (Shift+S)',
-                    icon: CupertinoIcons.camera_fill,
+                    icon: Icons.camera_alt_rounded,
                     onTap: () async {
                       final path = await widget.playerWrapper.takeSnapshot();
                       _showSnapshotFeedback(path);
@@ -321,28 +318,29 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
                   ),
                   const SizedBox(width: 4),
                   _quickActionIcon(
-                    tooltip: 'Media Info (Ctrl+I)',
-                    icon: CupertinoIcons.info,
-                    onTap: () => MediaInfoModal.show(context, widget.playerWrapper),
+                    tooltip: 'Studio Inspector (I)',
+                    icon: Icons.tune_rounded,
+                    isActive: windowState.isInspectorOpen,
+                    onTap: () => windowNotifier.toggleInspector(),
                   ),
                   const SizedBox(width: 4),
                   _quickActionIcon(
                     tooltip: 'Playlist (Ctrl+L)',
-                    icon: CupertinoIcons.list_bullet,
+                    icon: Icons.queue_music_rounded,
                     isActive: windowState.isPlaylistOpen,
                     onTap: () => windowNotifier.togglePlaylist(),
                   ),
                   const SizedBox(width: 4),
                   _quickActionIcon(
                     tooltip: windowState.isAlwaysOnTop ? 'Unpin' : 'Always on Top',
-                    icon: CupertinoIcons.pin_fill,
+                    icon: Icons.push_pin_rounded,
                     isActive: windowState.isAlwaysOnTop,
                     onTap: () => windowNotifier.toggleAlwaysOnTop(),
                   ),
                   const SizedBox(width: 4),
                   _quickActionIcon(
                     tooltip: windowState.isMiniMode ? 'Standard Window' : 'Mini Player (PiP)',
-                    icon: CupertinoIcons.rectangle_on_rectangle,
+                    icon: Icons.picture_in_picture_alt_rounded,
                     isActive: windowState.isMiniMode,
                     onTap: () => windowNotifier.toggleMiniMode(),
                   ),
@@ -350,8 +348,8 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
                   _quickActionIcon(
                     tooltip: windowState.isFullscreen ? 'Exit Fullscreen (Esc)' : 'Fullscreen (F)',
                     icon: windowState.isFullscreen
-                        ? CupertinoIcons.fullscreen_exit
-                        : CupertinoIcons.fullscreen,
+                        ? Icons.fullscreen_exit_rounded
+                        : Icons.fullscreen_rounded,
                     isActive: windowState.isFullscreen,
                     onTap: () => windowNotifier.toggleFullscreen(),
                   ),
@@ -390,7 +388,7 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
                   final item = recents[index];
                   return ListTile(
                     dense: true,
-                    leading: const Icon(CupertinoIcons.film, size: 18, color: AppTheme.accent),
+                    leading: const Icon(Icons.movie_rounded, size: 18, color: AppTheme.accent),
                     title: Text(item.title, style: AppTheme.bodySmall),
                     subtitle: Text(item.path, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.caption),
                     onTap: () {
@@ -446,13 +444,14 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
   }
 
   Widget _menuButton({required String label, required List<PopupMenuEntry> items}) {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
     return PopupMenuButton(
       tooltip: '',
       offset: const Offset(0, 32),
-      color: AppTheme.surface.withValues(alpha: 0.95),
+      color: isDark ? AppTheme.surface.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.96),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: AppTheme.glassBorder),
+        side: BorderSide(color: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder),
       ),
       itemBuilder: (_) => items,
       child: Container(
@@ -461,7 +460,7 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
         child: Text(
           label,
           style: AppTheme.caption.copyWith(
-            color: AppTheme.textPrimary,
+            color: isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary,
             fontWeight: FontWeight.w500,
             fontSize: 12.5,
           ),
@@ -471,6 +470,7 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
   }
 
   PopupMenuItem _menuItem(String title, String shortcut, VoidCallback? onTap) {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
     return PopupMenuItem(
       height: 32,
       onTap: onTap,
@@ -478,10 +478,24 @@ class _ModernMenuBarState extends ConsumerState<ModernMenuBar> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: AppTheme.bodySmall.copyWith(fontSize: 12.5)),
+          Text(
+            title,
+            style: AppTheme.bodySmall.copyWith(
+              fontSize: 12.5,
+              color: onTap == null
+                  ? (isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary)
+                  : (isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary),
+            ),
+          ),
           if (shortcut.isNotEmpty) ...[
             const SizedBox(width: 24),
-            Text(shortcut, style: AppTheme.caption.copyWith(fontSize: 11, color: AppTheme.textTertiary)),
+            Text(
+              shortcut,
+              style: AppTheme.caption.copyWith(
+                fontSize: 11,
+                color: isDark ? AppTheme.textTertiary : AppTheme.lightTextSecondary,
+              ),
+            ),
           ],
         ],
       ),

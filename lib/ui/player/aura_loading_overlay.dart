@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../player/player_controller.dart';
 import '../../theme/app_theme.dart';
@@ -76,8 +75,8 @@ class _AuraLoadingOverlayState extends State<AuraLoadingOverlay>
         final title = widget.playerWrapper.currentTitle ??
             (isLive ? 'Live Cinema Channel' : 'Media Stream');
 
-        // Visible whenever waiting for video frames to decode or during stream buffering
-        final bool showOverlay = !isReady || isBuffering || hasError;
+        // Visible only when waiting for initial frames to decode; never black out when video is already ready
+        final bool showOverlay = !isReady || (isLive && isBuffering && !isReady);
 
         return IgnorePointer(
           ignoring: !showOverlay,
@@ -306,7 +305,7 @@ class _AuraLoadingOverlayState extends State<AuraLoadingOverlay>
                                 children: [
                                   if (hasError) ...[
                                     const Icon(
-                                      CupertinoIcons.exclamationmark_triangle_fill,
+                                      Icons.warning_amber_rounded,
                                       size: 13,
                                       color: Colors.amberAccent,
                                     ),

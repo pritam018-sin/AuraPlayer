@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../player/player_controller.dart';
 import '../../theme/app_theme.dart';
@@ -12,8 +12,11 @@ class VideoAdjustmentsModal extends StatefulWidget {
   static Future<void> show(BuildContext context, AuraPlayerWrapper wrapper) {
     return showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
-      builder: (ctx) => VideoAdjustmentsModal(playerWrapper: wrapper),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: VideoAdjustmentsModal(playerWrapper: wrapper),
+      ),
     );
   }
 
@@ -38,13 +41,21 @@ class _VideoAdjustmentsModalState extends State<VideoAdjustmentsModal> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+
     return Center(
       child: Material(
         color: Colors.transparent,
         child: FrostedGlass(
           borderRadius: 20,
           padding: const EdgeInsets.all(24),
-          fillColor: AppTheme.surface.withValues(alpha: 0.88),
+          blur: 36,
+          fillColor: isDark
+              ? const Color(0xFF101420).withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.55),
+          borderColor: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Column(
@@ -57,15 +68,15 @@ class _VideoAdjustmentsModalState extends State<VideoAdjustmentsModal> {
                   children: [
                     Row(
                       children: [
-                        const Icon(CupertinoIcons.dial, size: 20, color: AppTheme.accent),
+                        const Icon(Icons.tune_rounded, size: 20, color: AppTheme.accent),
                         const SizedBox(width: 10),
                         Text('Video Adjustments & Filters',
-                            style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+                            style: AppTheme.body.copyWith(fontWeight: FontWeight.w700, color: textPrimary)),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(CupertinoIcons.clear_circled_solid,
-                          size: 20, color: AppTheme.textSecondary),
+                      icon: Icon(Icons.close_rounded,
+                          size: 20, color: textSecondary),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -96,7 +107,7 @@ class _VideoAdjustmentsModalState extends State<VideoAdjustmentsModal> {
                 }),
 
                 const SizedBox(height: 24),
-                const Divider(color: AppTheme.glassBorder, height: 1),
+                Divider(color: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder, height: 1),
                 const SizedBox(height: 16),
 
                 // Reset Button
@@ -113,10 +124,10 @@ class _VideoAdjustmentsModalState extends State<VideoAdjustmentsModal> {
                         });
                         widget.playerWrapper.resetVideoAdjustments();
                       },
-                      icon: const Icon(CupertinoIcons.arrow_counterclockwise, size: 14),
+                      icon: const Icon(Icons.restart_alt_rounded, size: 14),
                       label: const Text('Reset to Defaults'),
                       style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.textSecondary,
+                        foregroundColor: textSecondary,
                         textStyle: AppTheme.caption,
                       ),
                     ),
@@ -124,8 +135,9 @@ class _VideoAdjustmentsModalState extends State<VideoAdjustmentsModal> {
                       onPressed: () => Navigator.of(context).pop(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accent,
-                        foregroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF04131F),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       child: const Text('Done'),
                     ),

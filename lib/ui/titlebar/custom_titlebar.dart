@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -26,6 +26,10 @@ class _CustomTitleBarState extends ConsumerState<CustomTitleBar> {
   Widget build(BuildContext context) {
     final windowState = ref.watch(windowControlsProvider);
     final windowNotifier = ref.read(windowControlsProvider.notifier);
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 240),
@@ -33,123 +37,128 @@ class _CustomTitleBarState extends ConsumerState<CustomTitleBar> {
       opacity: widget.isVisible ? 1.0 : 0.0,
       child: IgnorePointer(
         ignoring: !widget.isVisible,
-        child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: AppTheme.surface.withValues(alpha: 0.75),
-            border: const Border(
-              bottom: BorderSide(
-                color: AppTheme.glassBorder,
-                width: 0.5,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              // Apple Traffic Lights
-              MouseRegion(
-                onEnter: (_) => setState(() => _isHoveringTraffic = true),
-                onExit: (_) => setState(() => _isHoveringTraffic = false),
-                child: Row(
-                  children: [
-                    _trafficButton(
-                      color: AppTheme.trafficRed,
-                      hoverIcon: CupertinoIcons.clear,
-                      onTap: () => windowManager.close(),
-                    ),
-                    const SizedBox(width: 8),
-                    _trafficButton(
-                      color: AppTheme.trafficYellow,
-                      hoverIcon: CupertinoIcons.minus,
-                      onTap: () => windowManager.minimize(),
-                    ),
-                    const SizedBox(width: 8),
-                    _trafficButton(
-                      color: AppTheme.trafficGreen,
-                      hoverIcon: CupertinoIcons.plus,
-                      onTap: () async {
-                        if (await windowManager.isMaximized()) {
-                          windowManager.unmaximize();
-                        } else {
-                          windowManager.maximize();
-                        }
-                      },
-                    ),
-                  ],
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppTheme.surface.withValues(alpha: 0.40)
+                    : Colors.white.withValues(alpha: 0.60),
+                border: Border(
+                  bottom: BorderSide(
+                    color: borderCol,
+                    width: 0.5,
+                  ),
                 ),
               ),
+              child: Row(
+                children: [
+                  // Apple Traffic Lights
+                  MouseRegion(
+                    onEnter: (_) => setState(() => _isHoveringTraffic = true),
+                    onExit: (_) => setState(() => _isHoveringTraffic = false),
+                    child: Row(
+                      children: [
+                        _trafficButton(
+                          color: AppTheme.trafficRed,
+                          hoverIcon: Icons.close_rounded,
+                          onTap: () => windowManager.close(),
+                        ),
+                        const SizedBox(width: 8),
+                        _trafficButton(
+                          color: AppTheme.trafficYellow,
+                          hoverIcon: Icons.remove_rounded,
+                          onTap: () => windowManager.minimize(),
+                        ),
+                        const SizedBox(width: 8),
+                        _trafficButton(
+                          color: AppTheme.trafficGreen,
+                          hoverIcon: Icons.add_rounded,
+                          onTap: () async {
+                            if (await windowManager.isMaximized()) {
+                              windowManager.unmaximize();
+                            } else {
+                              windowManager.maximize();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
 
-              const SizedBox(width: 16),
+                  const SizedBox(width: 16),
 
-              // Draggable Title Area
-              Expanded(
-                child: DragToMoveArea(
-                  child: GestureDetector(
-                    onDoubleTap: () async {
-                      if (await windowManager.isMaximized()) {
-                        windowManager.unmaximize();
-                      } else {
-                        windowManager.maximize();
-                      }
-                    },
-                    child: Container(
-                      color: Colors.transparent,
-                      alignment: Alignment.center,
-                      child: Text(
-                        widget.title ?? 'AuraPlayer',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTheme.bodySmall.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: widget.title != null
-                              ? AppTheme.textPrimary
-                              : AppTheme.textSecondary,
+                  // Draggable Title Area
+                  Expanded(
+                    child: DragToMoveArea(
+                      child: GestureDetector(
+                        onDoubleTap: () async {
+                          if (await windowManager.isMaximized()) {
+                            windowManager.unmaximize();
+                          } else {
+                            windowManager.maximize();
+                          }
+                        },
+                        child: Container(
+                          color: Colors.transparent,
+                          alignment: Alignment.center,
+                          child: Text(
+                            widget.title ?? 'AuraPlayer',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTheme.bodySmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: widget.title != null ? textPrimary : textSecondary,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
 
-              const SizedBox(width: 16),
+                  const SizedBox(width: 16),
 
-              // Right Actions: PiP, Always on top, Playlist
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _actionButton(
-                    tooltip: 'Playlist',
-                    icon: CupertinoIcons.list_bullet,
-                    isActive: windowState.isPlaylistOpen,
-                    onTap: () => windowNotifier.togglePlaylist(),
-                  ),
-                  const SizedBox(width: 6),
-                  _actionButton(
-                    tooltip: windowState.isAlwaysOnTop ? 'Unpin' : 'Always on Top',
-                    icon: CupertinoIcons.pin_fill,
-                    isActive: windowState.isAlwaysOnTop,
-                    onTap: () => windowNotifier.toggleAlwaysOnTop(),
-                  ),
-                  const SizedBox(width: 6),
-                  _actionButton(
-                    tooltip: windowState.isMiniMode ? 'Standard Window' : 'Mini Player (PiP)',
-                    icon: CupertinoIcons.rectangle_on_rectangle,
-                    isActive: windowState.isMiniMode,
-                    onTap: () => windowNotifier.toggleMiniMode(),
-                  ),
-                  const SizedBox(width: 6),
-                  _actionButton(
-                    tooltip: windowState.isFullscreen ? 'Exit Fullscreen' : 'Fullscreen (F)',
-                    icon: windowState.isFullscreen
-                        ? CupertinoIcons.fullscreen_exit
-                        : CupertinoIcons.fullscreen,
-                    isActive: windowState.isFullscreen,
-                    onTap: () => windowNotifier.toggleFullscreen(),
+                  // Right Actions: PiP, Always on top, Playlist
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _actionButton(
+                        tooltip: 'Playlist',
+                        icon: Icons.queue_music_rounded,
+                        isActive: windowState.isPlaylistOpen,
+                        onTap: () => windowNotifier.togglePlaylist(),
+                      ),
+                      const SizedBox(width: 6),
+                      _actionButton(
+                        tooltip: windowState.isAlwaysOnTop ? 'Unpin' : 'Always on Top',
+                        icon: Icons.push_pin_rounded,
+                        isActive: windowState.isAlwaysOnTop,
+                        onTap: () => windowNotifier.toggleAlwaysOnTop(),
+                      ),
+                      const SizedBox(width: 6),
+                      _actionButton(
+                        tooltip: windowState.isMiniMode ? 'Standard Window' : 'Mini Player (PiP)',
+                        icon: Icons.picture_in_picture_alt_rounded,
+                        isActive: windowState.isMiniMode,
+                        onTap: () => windowNotifier.toggleMiniMode(),
+                      ),
+                      const SizedBox(width: 6),
+                      _actionButton(
+                        tooltip: windowState.isFullscreen ? 'Exit Fullscreen' : 'Fullscreen (F)',
+                        icon: windowState.isFullscreen
+                            ? Icons.fullscreen_exit_rounded
+                            : Icons.fullscreen_rounded,
+                        isActive: windowState.isFullscreen,
+                        onTap: () => windowNotifier.toggleFullscreen(),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),

@@ -1,5 +1,5 @@
+import 'dart:ui';
 import '../../player/track_formatters.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../player/player_controller.dart';
 import '../../theme/app_theme.dart';
@@ -13,8 +13,11 @@ class MediaInfoModal extends StatelessWidget {
   static Future<void> show(BuildContext context, AuraPlayerWrapper wrapper) {
     return showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
-      builder: (ctx) => MediaInfoModal(playerWrapper: wrapper),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: MediaInfoModal(playerWrapper: wrapper),
+      ),
     );
   }
 
@@ -33,6 +36,9 @@ class MediaInfoModal extends StatelessWidget {
 
     final audioInfo = tracks.audio.map((a) => TrackFormatters.formatAudioTrack(a)).join(', ');
     final subInfo = tracks.subtitle.map((s) => TrackFormatters.formatSubtitleTrack(s)).join(', ');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
 
     return Center(
       child: Material(
@@ -40,7 +46,11 @@ class MediaInfoModal extends StatelessWidget {
         child: FrostedGlass(
           borderRadius: 20,
           padding: const EdgeInsets.all(24),
-          fillColor: AppTheme.surface.withValues(alpha: 0.90),
+          blur: 36,
+          fillColor: isDark
+              ? const Color(0xFF101420).withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.55),
+          borderColor: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520, maxHeight: 560),
             child: Column(
@@ -53,15 +63,15 @@ class MediaInfoModal extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(CupertinoIcons.info_circle_fill, size: 20, color: AppTheme.accent),
+                        const Icon(Icons.info_rounded, size: 20, color: AppTheme.accent),
                         const SizedBox(width: 10),
                         Text('Media Information & Codecs',
-                            style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+                            style: AppTheme.body.copyWith(fontWeight: FontWeight.w700, color: textPrimary)),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(CupertinoIcons.clear_circled_solid,
-                          size: 20, color: AppTheme.textSecondary),
+                      icon: Icon(Icons.close_rounded,
+                          size: 20, color: textSecondary),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],

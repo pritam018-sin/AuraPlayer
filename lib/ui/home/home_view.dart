@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -66,6 +66,13 @@ class _HomeViewState extends ConsumerState<HomeView> {
   Widget build(BuildContext context) {
     final storage = ref.watch(storageServiceProvider);
     final recents = storage.getRecentFiles();
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final glassBorder = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+    final cardBg = isDark
+        ? const Color(0xFF10121A).withValues(alpha: 0.18)
+        : Colors.white.withValues(alpha: 0.35);
 
     return DropTarget(
       onDragEntered: (_) => setState(() => _isDraggingOver = true),
@@ -87,38 +94,42 @@ class _HomeViewState extends ConsumerState<HomeView> {
         }
       },
       child: Container(
-        color: AppTheme.background,
+        color: Colors.transparent,
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Drop Zone Card
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutCubic,
-                  width: 640,
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 48),
-                  decoration: BoxDecoration(
-                    color: _isDraggingOver
-                        ? AppTheme.accent.withValues(alpha: 0.08)
-                        : AppTheme.surface.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: _isDraggingOver
-                          ? AppTheme.accent
-                          : AppTheme.glassBorder,
-                      width: _isDraggingOver ? 1.5 : 1.0,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: _isDraggingOver ? 0.45 : 0.25),
-                        blurRadius: 32,
-                        offset: const Offset(0, 10),
+                // Drop Zone Card with true Frosted Glass
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      width: 640,
+                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 48),
+                      decoration: BoxDecoration(
+                        color: _isDraggingOver
+                            ? AppTheme.accent.withValues(alpha: 0.12)
+                            : cardBg,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: _isDraggingOver
+                              ? AppTheme.accent
+                              : glassBorder,
+                          width: _isDraggingOver ? 1.5 : 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
+                            blurRadius: 32,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
                   child: Column(
                     children: [
                       Container(
@@ -127,18 +138,18 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         decoration: BoxDecoration(
                           color: _isDraggingOver
                               ? AppTheme.accent.withValues(alpha: 0.2)
-                              : AppTheme.surfaceSecondary,
+                              : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04)),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: _isDraggingOver
                                 ? AppTheme.accent.withValues(alpha: 0.5)
-                                : AppTheme.glassBorder,
+                                : glassBorder,
                           ),
                         ),
                         child: Icon(
                           _isDraggingOver
-                              ? CupertinoIcons.arrow_down_doc_fill
-                              : CupertinoIcons.play_circle_fill,
+                              ? Icons.download_rounded
+                              : Icons.play_circle_fill_rounded,
                           size: 38,
                           color: _isDraggingOver ? AppTheme.accent : AppTheme.accentHover,
                         ),
@@ -146,12 +157,12 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       const SizedBox(height: 20),
                       Text(
                         _isDraggingOver ? 'Drop Video to Play' : 'Drag & Drop Video Files Here',
-                        style: AppTheme.headline,
+                        style: AppTheme.headline.copyWith(color: textPrimary),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Supports MP4, MKV, AVI, WebM, MOV, and more',
-                        style: AppTheme.caption,
+                        style: AppTheme.caption.copyWith(color: textSecondary),
                       ),
                       const SizedBox(height: 28),
 
@@ -163,51 +174,53 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         children: [
                           ElevatedButton.icon(
                             onPressed: _pickFiles,
-                            icon: const Icon(CupertinoIcons.folder_badge_plus, size: 17),
+                            icon: const Icon(Icons.video_file_rounded, size: 17),
                             label: const Text('Open Video File'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.accent,
-                              foregroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF04131F),
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               elevation: 0,
-                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
                           OutlinedButton.icon(
                             onPressed: _openFolder,
-                            icon: const Icon(CupertinoIcons.folder, size: 17),
+                            icon: const Icon(Icons.folder_rounded, size: 17),
                             label: const Text('Open Folder'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.textPrimary,
-                              side: const BorderSide(color: AppTheme.glassBorder),
+                              foregroundColor: textPrimary,
+                              side: BorderSide(color: glassBorder),
                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w500, color: textPrimary),
                             ),
                           ),
                           OutlinedButton.icon(
                             onPressed: () => OpenNetworkModal.show(context),
-                            icon: const Icon(CupertinoIcons.globe, size: 17),
+                            icon: const Icon(Icons.public_rounded, size: 17),
                             label: const Text('Network Stream'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.textPrimary,
-                              side: const BorderSide(color: AppTheme.glassBorder),
+                              foregroundColor: textPrimary,
+                              side: BorderSide(color: glassBorder),
                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                              textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w500, color: textPrimary),
                             ),
                           ),
                           IconButton(
                             tooltip: 'Shortcuts Guide',
                             onPressed: () => ShortcutsGuideModal.show(context),
-                            icon: const Icon(CupertinoIcons.question_circle, size: 20, color: AppTheme.textSecondary),
+                            icon: Icon(Icons.help_outline_rounded, size: 20, color: textSecondary),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
+              ),
+            ),
 
                 // Recent Files Section
                 if (recents.isNotEmpty) ...[
@@ -224,7 +237,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                               'Recent Videos',
                               style: AppTheme.body.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: AppTheme.textSecondary,
+                                color: textSecondary,
                               ),
                             ),
                             TextButton(
@@ -233,7 +246,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                                 setState(() {});
                               },
                               style: TextButton.styleFrom(
-                                foregroundColor: AppTheme.textTertiary,
+                                foregroundColor: textSecondary,
                                 textStyle: AppTheme.caption,
                               ),
                               child: const Text('Clear All'),
@@ -248,7 +261,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                           separatorBuilder: (_, index) => const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final item = recents[index];
-                            return _recentCard(item);
+                            return _recentCard(item, isDark, textPrimary, textSecondary, glassBorder);
                           },
                         ),
                       ],
@@ -263,15 +276,25 @@ class _HomeViewState extends ConsumerState<HomeView> {
     );
   }
 
-  Widget _recentCard(RecentItem item) {
+  Widget _recentCard(
+    RecentItem item,
+    bool isDark,
+    Color textPrimary,
+    Color textSecondary,
+    Color glassBorder,
+  ) {
     final progress = item.duration.inMilliseconds > 0
         ? (item.position.inMilliseconds / item.duration.inMilliseconds).clamp(0.0, 1.0)
         : 0.0;
 
     return FrostedGlass(
       borderRadius: 14,
+      blur: 24,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      fillColor: AppTheme.surface.withValues(alpha: 0.55),
+      fillColor: isDark
+          ? const Color(0xFF10121A).withValues(alpha: 0.18)
+          : Colors.white.withValues(alpha: 0.35),
+      borderColor: glassBorder,
       onTap: () {
         ref.read(playlistProvider.notifier).setList([
           PlaylistItem(path: item.path, title: item.title),
@@ -283,12 +306,14 @@ class _HomeViewState extends ConsumerState<HomeView> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.surfaceSecondary,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.glassBorder),
+              border: Border.all(color: glassBorder),
             ),
             child: const Icon(
-              CupertinoIcons.film,
+              Icons.movie_rounded,
               size: 20,
               color: AppTheme.accent,
             ),
@@ -302,18 +327,21 @@ class _HomeViewState extends ConsumerState<HomeView> {
                   item.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                  style: AppTheme.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Text(
                       'Last watched ${DateFormat.yMMMd().format(item.lastPlayed)}',
-                      style: AppTheme.caption,
+                      style: AppTheme.caption.copyWith(color: textSecondary),
                     ),
                     if (progress > 0.02) ...[
                       const SizedBox(width: 8),
-                      Text('•', style: AppTheme.caption),
+                      Text('•', style: AppTheme.caption.copyWith(color: textSecondary)),
                       const SizedBox(width: 8),
                       Text(
                         '${(progress * 100).toInt()}% completed',
@@ -329,7 +357,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 2.5,
-                      backgroundColor: AppTheme.surfaceSecondary,
+                      backgroundColor: isDark ? Colors.white12 : Colors.black12,
                       valueColor: const AlwaysStoppedAnimation(AppTheme.accent),
                     ),
                   ),
@@ -338,10 +366,10 @@ class _HomeViewState extends ConsumerState<HomeView> {
             ),
           ),
           const SizedBox(width: 12),
-          const Icon(
-            CupertinoIcons.play_fill,
+          Icon(
+            Icons.play_arrow_rounded,
             size: 16,
-            color: AppTheme.textSecondary,
+            color: textSecondary,
           ),
         ],
       ),

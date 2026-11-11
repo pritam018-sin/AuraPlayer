@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +10,7 @@ import '../../services/thumbnail_service.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/frosted_glass.dart';
+import '../modals/manage_folders_modal.dart';
 
 class LibraryView extends ConsumerStatefulWidget {
   const LibraryView({super.key});
@@ -50,6 +51,26 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     super.dispose();
   }
 
+  void _safeScanDir(Directory dir, List<File> target, {int depth = 0}) {
+    if (depth > 5) return;
+    try {
+      final entities = dir.listSync(recursive: false, followLinks: false);
+      for (final entity in entities) {
+        if (entity is File) {
+          final lower = entity.path.toLowerCase();
+          if (_videoExtensions.any((ext) => lower.endsWith(ext))) {
+            target.add(entity);
+          }
+        } else if (entity is Directory) {
+          final name = entity.path.split(RegExp(r'[/\\]')).last;
+          if (!name.startsWith('.') && !name.startsWith(r'$') && name != 'node_modules') {
+            _safeScanDir(entity, target, depth: depth + 1);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _scanAllImportedFolders() async {
     setState(() => _isLoading = true);
     final storage = ref.read(storageServiceProvider);
@@ -59,17 +80,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     for (final folderPath in folders) {
       final dir = Directory(folderPath);
       if (dir.existsSync()) {
-        try {
-          final entities = dir.listSync(recursive: true, followLinks: false);
-          for (final entity in entities) {
-            if (entity is File) {
-              final lower = entity.path.toLowerCase();
-              if (_videoExtensions.any((ext) => lower.endsWith(ext))) {
-                files.add(entity);
-              }
-            }
-          }
-        } catch (_) {}
+        _safeScanDir(dir, files);
       }
     }
 
@@ -88,6 +99,14 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     if (path != null) {
       await ref.read(storageServiceProvider).addImportedFolder(path);
       await _scanAllImportedFolders();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added folder to library: ${path.split(RegExp(r'[/\\]')).last}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -99,12 +118,22 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     );
 
     if (result != null && result.paths.isNotEmpty) {
-      final items = result.paths
-          .whereType<String>()
-          .map((p) => PlaylistItem(path: p, title: p.split(RegExp(r'[/\\]')).last))
-          .toList();
+      final storage = ref.read(storageServiceProvider);
+      final validPaths = result.paths.whereType<String>().toList();
+      for (final p in validPaths) {
+        final parentDir = File(p).parent.path;
+        await storage.addImportedFolder(parentDir);
+      }
+      await _scanAllImportedFolders();
 
-      ref.read(playlistProvider.notifier).setList(items);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added ${validPaths.length} video(s) to library'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -198,6 +227,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     final filtered = _filteredFiles;
     final totalBytes = _calculateTotalSize(filtered);
     final heroFeatured = _getHeroFeaturedFile(filtered);
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
 
     return DropTarget(
       onDragEntered: (_) => setState(() => _isDraggingOver = true),
@@ -223,44 +256,49 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.background,
+          color: Colors.transparent,
           border: _isDraggingOver
               ? Border.all(color: AppTheme.accent, width: 2)
               : null,
         ),
         child: Column(
           children: [
-            // Single Unified Cinema Search & Filter Strip
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppTheme.surface.withValues(alpha: 0.5),
-                border: const Border(
-                  bottom: BorderSide(color: AppTheme.glassBorder, width: 0.5),
-                ),
-              ),
-              child: Row(
+            // Single Unified Cinema Search & Filter Strip with Frosted Glass Blur
+            ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppTheme.surface.withValues(alpha: 0.22)
+                        : Colors.white.withValues(alpha: 0.38),
+                    border: Border(
+                      bottom: BorderSide(color: borderCol, width: 0.5),
+                    ),
+                  ),
+                  child: Row(
                 children: [
                   // 1. Search Field
                   Container(
                     width: 250,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceSecondary,
+                      color: isDark ? AppTheme.surfaceSecondary : Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.glassBorder),
+                      border: Border.all(color: borderCol),
                     ),
                     child: TextField(
                       controller: _searchController,
-                      style: AppTheme.bodySmall,
+                      style: TextStyle(color: textPrimary, fontSize: 13),
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         hintText: 'Search ${_scannedFiles.length} videos...',
-                        hintStyle: AppTheme.caption.copyWith(color: AppTheme.textTertiary),
-                        prefixIcon: const Icon(CupertinoIcons.search, size: 15, color: AppTheme.textSecondary),
+                        hintStyle: TextStyle(color: textSecondary, fontSize: 13),
+                        prefixIcon: Icon(Icons.search_rounded, size: 16, color: textSecondary),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(CupertinoIcons.clear_circled_solid, size: 13, color: AppTheme.textTertiary),
+                                icon: Icon(Icons.close_rounded, size: 15, color: textSecondary),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {});
@@ -308,14 +346,55 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
 
                   const SizedBox(width: 14),
 
-                  // 3. Quick Actions: Add Folder & Add Files
+                  // 3. Quick Actions: Add Folder, Manage Folders, Remove Folder & Add Files
+                  if (_selectedFolder != null) ...[
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final folderToRemove = _selectedFolder!;
+                        await storage.removeImportedFolder(folderToRemove);
+                        setState(() => _selectedFolder = null);
+                        await _scanAllImportedFolders();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Removed folder from library: ${folderToRemove.split(RegExp(r'[/\\]')).last}'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.delete_outline_rounded, size: 15, color: Color(0xFFF43F5E)),
+                      label: const Text('Remove Folder', style: TextStyle(color: Color(0xFFF43F5E))),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFF43F5E),
+                        side: BorderSide(color: const Color(0xFFF43F5E).withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: () => ManageFoldersModal.show(context, onFoldersChanged: _scanAllImportedFolders),
+                    icon: Icon(Icons.folder_shared_rounded, size: 15, color: textPrimary),
+                    label: Text('Manage Folders', style: TextStyle(color: textPrimary)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: textPrimary,
+                      side: BorderSide(color: borderCol),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: _importFolder,
-                    icon: const Icon(CupertinoIcons.folder_badge_plus, size: 14),
-                    label: const Text('Add Folder'),
+                    icon: Icon(Icons.create_new_folder_rounded, size: 15, color: textPrimary),
+                    label: Text('Add Folder', style: TextStyle(color: textPrimary)),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.textPrimary,
-                      side: const BorderSide(color: AppTheme.glassBorder),
+                      foregroundColor: textPrimary,
+                      side: BorderSide(color: borderCol),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
@@ -324,11 +403,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: _importFiles,
-                    icon: const Icon(CupertinoIcons.plus, size: 14),
-                    label: const Text('Add Files'),
+                    icon: Icon(Icons.add_rounded, size: 16, color: textPrimary),
+                    label: Text('Add Files', style: TextStyle(color: textPrimary)),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.textPrimary,
-                      side: const BorderSide(color: AppTheme.glassBorder),
+                      foregroundColor: textPrimary,
+                      side: BorderSide(color: borderCol),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
@@ -337,6 +416,8 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                 ],
               ),
             ),
+          ),
+        ),
 
             // Main Content Area
             Expanded(
@@ -365,7 +446,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                           '${filtered.length} TITLES',
                                           style: AppTheme.caption.copyWith(
                                             fontWeight: FontWeight.w700,
-                                            color: Colors.white,
+                                            color: textPrimary,
                                             letterSpacing: 0.8,
                                           ),
                                         ),
@@ -373,7 +454,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                         Text(
                                           '•  ${_formatFileSize(totalBytes)} TOTAL',
                                           style: AppTheme.caption.copyWith(
-                                            color: AppTheme.textTertiary,
+                                            color: textSecondary,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -384,10 +465,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                         // Sort Dropdown Menu
                                         PopupMenuButton<String>(
                                           tooltip: 'Sort By',
-                                          color: AppTheme.surface.withValues(alpha: 0.95),
+                                          color: isDark ? AppTheme.surface.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(12),
-                                            side: const BorderSide(color: AppTheme.glassBorder),
+                                            side: BorderSide(color: borderCol),
                                           ),
                                           onSelected: (val) => setState(() => _sortMode = val),
                                           itemBuilder: (ctx) => [
@@ -396,9 +477,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                               height: 32,
                                               child: Row(
                                                 children: [
-                                                  Icon(CupertinoIcons.clock, size: 14, color: _sortMode == 'recent' ? AppTheme.accent : Colors.white70),
+                                                  Icon(Icons.access_time_rounded, size: 15, color: _sortMode == 'recent' ? AppTheme.accent : textSecondary),
                                                   const SizedBox(width: 8),
-                                                  Text('Recently Added', style: TextStyle(fontSize: 12.5, color: _sortMode == 'recent' ? AppTheme.accent : Colors.white)),
+                                                  Text('Recently Added', style: TextStyle(fontSize: 12.5, color: _sortMode == 'recent' ? AppTheme.accent : textPrimary)),
                                                 ],
                                               ),
                                             ),
@@ -407,9 +488,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                               height: 32,
                                               child: Row(
                                                 children: [
-                                                  Icon(CupertinoIcons.sort_down, size: 14, color: _sortMode == 'name_asc' ? AppTheme.accent : Colors.white70),
+                                                  Icon(Icons.sort_by_alpha_rounded, size: 15, color: _sortMode == 'name_asc' ? AppTheme.accent : textSecondary),
                                                   const SizedBox(width: 8),
-                                                  Text('Name (A to Z)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'name_asc' ? AppTheme.accent : Colors.white)),
+                                                  Text('Name (A to Z)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'name_asc' ? AppTheme.accent : textPrimary)),
                                                 ],
                                               ),
                                             ),
@@ -418,9 +499,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                               height: 32,
                                               child: Row(
                                                 children: [
-                                                  Icon(CupertinoIcons.sort_up, size: 14, color: _sortMode == 'name_desc' ? AppTheme.accent : Colors.white70),
+                                                  Icon(Icons.sort_by_alpha_rounded, size: 15, color: _sortMode == 'name_desc' ? AppTheme.accent : textSecondary),
                                                   const SizedBox(width: 8),
-                                                  Text('Name (Z to A)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'name_desc' ? AppTheme.accent : Colors.white)),
+                                                  Text('Name (Z to A)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'name_desc' ? AppTheme.accent : textPrimary)),
                                                 ],
                                               ),
                                             ),
@@ -429,9 +510,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                               height: 32,
                                               child: Row(
                                                 children: [
-                                                  Icon(CupertinoIcons.arrow_down_circle, size: 14, color: _sortMode == 'size_desc' ? AppTheme.accent : Colors.white70),
+                                                  Icon(Icons.data_usage_rounded, size: 15, color: _sortMode == 'size_desc' ? AppTheme.accent : textSecondary),
                                                   const SizedBox(width: 8),
-                                                  Text('File Size (Largest)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'size_desc' ? AppTheme.accent : Colors.white)),
+                                                  Text('File Size (Largest)', style: TextStyle(fontSize: 12.5, color: _sortMode == 'size_desc' ? AppTheme.accent : textPrimary)),
                                                 ],
                                               ),
                                             ),
@@ -439,14 +520,14 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                             decoration: BoxDecoration(
-                                              color: AppTheme.surfaceSecondary,
+                                              color: isDark ? AppTheme.surfaceSecondary : Colors.white.withValues(alpha: 0.85),
                                               borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: AppTheme.glassBorder),
+                                              border: Border.all(color: borderCol),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                const Icon(CupertinoIcons.arrow_up_arrow_down, size: 13, color: AppTheme.accent),
+                                                const Icon(Icons.swap_vert_rounded, size: 15, color: AppTheme.accent),
                                                 const SizedBox(width: 6),
                                                 Text(
                                                   _sortMode == 'recent'
@@ -456,10 +537,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                                           : _sortMode == 'name_desc'
                                                               ? 'Name Z-A'
                                                               : 'Size',
-                                                  style: AppTheme.caption.copyWith(fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                                                  style: AppTheme.caption.copyWith(fontWeight: FontWeight.w600, color: textPrimary),
                                                 ),
                                                 const SizedBox(width: 4),
-                                                const Icon(CupertinoIcons.chevron_down, size: 10, color: AppTheme.textTertiary),
+                                                Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: textSecondary),
                                               ],
                                             ),
                                           ),
@@ -469,9 +550,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                         // Grid / List View Toggle
                                         Container(
                                           decoration: BoxDecoration(
-                                            color: AppTheme.surfaceSecondary,
+                                            color: isDark ? AppTheme.surfaceSecondary : Colors.white.withValues(alpha: 0.85),
                                             borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: AppTheme.glassBorder),
+                                            border: Border.all(color: borderCol),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -486,13 +567,13 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
                                                   ),
                                                   child: Icon(
-                                                    CupertinoIcons.square_grid_2x2,
+                                                    Icons.grid_view_rounded,
                                                     size: 15,
-                                                    color: _isGridView ? AppTheme.accent : AppTheme.textTertiary,
+                                                    color: _isGridView ? AppTheme.accent : textSecondary,
                                                   ),
                                                 ),
                                               ),
-                                              Container(width: 1, height: 16, color: AppTheme.glassBorder),
+                                              Container(width: 1, height: 16, color: borderCol),
                                               InkWell(
                                                 onTap: () => setState(() => _isGridView = false),
                                                 borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
@@ -503,9 +584,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                                     borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
                                                   ),
                                                   child: Icon(
-                                                    CupertinoIcons.list_bullet,
-                                                    size: 15,
-                                                    color: !_isGridView ? AppTheme.accent : AppTheme.textTertiary,
+                                                    Icons.view_list_rounded,
+                                                    size: 16,
+                                                    color: !_isGridView ? AppTheme.accent : textSecondary,
                                                   ),
                                                 ),
                                               ),
@@ -516,7 +597,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
 
                                         ElevatedButton.icon(
                                           onPressed: () => _playAll(shuffle: false),
-                                          icon: const Icon(CupertinoIcons.play_circle_fill, size: 16),
+                                          icon: const Icon(Icons.play_circle_fill_rounded, size: 16),
                                           label: const Text('Play All'),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: AppTheme.accent.withValues(alpha: 0.2),
@@ -533,11 +614,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                         const SizedBox(width: 10),
                                         OutlinedButton.icon(
                                           onPressed: () => _playAll(shuffle: true),
-                                          icon: const Icon(CupertinoIcons.shuffle, size: 15),
-                                          label: const Text('Shuffle'),
+                                          icon: Icon(Icons.shuffle_rounded, size: 15, color: textSecondary),
+                                          label: Text('Shuffle', style: TextStyle(color: textSecondary)),
                                           style: OutlinedButton.styleFrom(
-                                            foregroundColor: AppTheme.textSecondary,
-                                            side: const BorderSide(color: AppTheme.glassBorder),
+                                            foregroundColor: textSecondary,
+                                            side: BorderSide(color: borderCol),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                             textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w500),
@@ -596,6 +677,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
   }
 
   Widget _buildHeroSpotlight(File file) {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+
     final rawName = file.path.split(RegExp(r'[/\\]')).last;
     final cleanTitle = rawName.contains('.')
         ? rawName.substring(0, rawName.lastIndexOf('.'))
@@ -609,15 +695,17 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
       sizeBytes = file.lengthSync();
     } catch (_) {}
 
+    final scrimColor = isDark ? const Color(0xFF0D0D12) : const Color(0xFFF1F5F9);
+
     return Container(
       margin: const EdgeInsets.fromLTRB(28, 14, 28, 6),
       height: 200,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+        border: Border.all(color: borderCol, width: 0.8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
+            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -641,7 +729,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
             else
               Positioned.fill(child: _fallbackThumb()),
 
-            // Cinematic multi-directional dark gradient scrim
+            // Cinematic multi-directional gradient scrim
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -649,10 +737,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      const Color(0xFF0D0D12),
-                      const Color(0xFF0D0D12).withValues(alpha: 0.95),
-                      const Color(0xFF0D0D12).withValues(alpha: 0.75),
-                      const Color(0xFF0D0D12).withValues(alpha: 0.25),
+                      scrimColor,
+                      scrimColor.withValues(alpha: 0.95),
+                      scrimColor.withValues(alpha: 0.75),
+                      scrimColor.withValues(alpha: 0.25),
                       Colors.transparent,
                     ],
                     stops: const [0.0, 0.40, 0.65, 0.85, 1.0],
@@ -691,7 +779,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(CupertinoIcons.sparkles, size: 10, color: Colors.white),
+                            const Icon(Icons.auto_awesome_rounded, size: 11, color: Colors.white),
                             const SizedBox(width: 4),
                             Text(
                               savedPos.inSeconds > 5 ? 'CONTINUE WATCHING' : 'FEATURED MEDIA',
@@ -709,14 +797,14 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
+                          color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+                          border: Border.all(color: borderCol, width: 0.8),
                         ),
                         child: Text(
                           ext,
                           style: AppTheme.caption.copyWith(
-                            color: Colors.white70,
+                            color: textSecondary,
                             fontWeight: FontWeight.w700,
                             fontSize: 10,
                           ),
@@ -727,7 +815,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                         Text(
                           _formatFileSize(sizeBytes),
                           style: AppTheme.caption.copyWith(
-                            color: AppTheme.textTertiary,
+                            color: textSecondary,
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
@@ -746,6 +834,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.2,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -758,7 +847,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTheme.caption.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: textSecondary,
                       fontSize: 12,
                     ),
                   ),
@@ -774,11 +863,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                 playImmediately: true,
                               );
                         },
-                        icon: const Icon(CupertinoIcons.play_fill, size: 14),
+                        icon: const Icon(Icons.play_arrow_rounded, size: 16),
                         label: Text(savedPos.inSeconds > 5 ? 'Resume Watching' : 'Play Now'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.accent,
-                          foregroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF04131F),
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           elevation: 0,
@@ -796,11 +885,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                                   playImmediately: true,
                                 );
                           },
-                          icon: const Icon(CupertinoIcons.arrow_counterclockwise, size: 13),
-                          label: const Text('From Beginning'),
+                          icon: Icon(Icons.replay_rounded, size: 15, color: textPrimary),
+                          label: Text('From Beginning', style: TextStyle(color: textPrimary)),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: AppTheme.glassBorder),
+                            foregroundColor: textPrimary,
+                            side: BorderSide(color: borderCol),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             textStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w600),
@@ -824,6 +913,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     required VoidCallback onTap,
     VoidCallback? onDelete,
   }) {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+
     return Container(
       margin: const EdgeInsets.only(right: 8),
       alignment: Alignment.center,
@@ -835,10 +928,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
             gradient: isSelected ? AppTheme.auraGradient : null,
-            color: isSelected ? null : AppTheme.surfaceSecondary,
+            color: isSelected ? null : (isDark ? AppTheme.surfaceSecondary : Colors.white.withValues(alpha: 0.85)),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? Colors.transparent : AppTheme.glassBorder,
+              color: isSelected ? Colors.transparent : borderCol,
             ),
             boxShadow: isSelected
                 ? [
@@ -856,7 +949,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
               Text(
                 label,
                 style: AppTheme.caption.copyWith(
-                  color: isSelected ? const Color(0xFF04131F) : AppTheme.textSecondary,
+                  color: isSelected ? const Color(0xFF04131F) : textSecondary,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                   fontSize: 12,
                 ),
@@ -866,9 +959,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                 GestureDetector(
                   onTap: onDelete,
                   child: Icon(
-                    CupertinoIcons.clear_circled,
-                    size: 13,
-                    color: isSelected ? const Color(0xFF04131F).withValues(alpha: 0.7) : AppTheme.textTertiary,
+                    Icons.cancel_rounded,
+                    size: 14,
+                    color: isSelected ? const Color(0xFF04131F).withValues(alpha: 0.7) : textSecondary,
                   ),
                 ),
               ],
@@ -880,6 +973,14 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
   }
 
   Widget _videoCard(File file) {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+    final cardBg = isDark
+        ? const Color(0xFF0F1420).withValues(alpha: 0.18)
+        : Colors.white.withValues(alpha: 0.30);
+
     final storage = ref.read(storageServiceProvider);
     final rawName = file.path.split(RegExp(r'[/\\]')).last;
     final ext = rawName.contains('.') ? rawName.split('.').last.toUpperCase() : 'VIDEO';
@@ -903,8 +1004,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
     return FrostedGlass(
       borderRadius: 16,
       padding: EdgeInsets.zero,
-      fillColor: const Color(0xFF10121A).withValues(alpha: 0.65),
-      borderColor: const Color(0x38FFFFFF),
+      blur: 35,
+      fillColor: cardBg,
+      borderColor: borderCol,
       onTap: () {
         ref.read(playlistProvider.notifier).addItem(
               PlaylistItem(path: file.path, title: cleanTitle),
@@ -964,7 +1066,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.75),
                                 borderRadius: BorderRadius.circular(5),
-                                border: Border.all(color: AppTheme.glassBorder),
+                                border: Border.all(color: borderCol),
                               ),
                               child: Text(
                                 ext,
@@ -1017,10 +1119,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                         // 3-Dots Quick Actions Menu
                         PopupMenuButton<String>(
                           tooltip: 'Options',
-                          color: AppTheme.surface.withValues(alpha: 0.95),
+                          color: isDark ? AppTheme.surface.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: AppTheme.glassBorder),
+                            side: BorderSide(color: borderCol),
                           ),
                           onSelected: (val) async {
                             if (val == 'play') {
@@ -1059,60 +1161,60 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                             }
                           },
                           itemBuilder: (ctx) => [
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'play',
                               height: 32,
                               child: Row(
                                 children: [
-                                  Icon(CupertinoIcons.play_fill, size: 14, color: AppTheme.accent),
-                                  SizedBox(width: 8),
-                                  Text('Play Now', style: TextStyle(fontSize: 12.5)),
+                                  const Icon(Icons.play_arrow_rounded, size: 16, color: AppTheme.accent),
+                                  const SizedBox(width: 8),
+                                  Text('Play Now', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                                 ],
                               ),
                             ),
                             if (savedPos.inSeconds > 5)
-                              const PopupMenuItem(
+                              PopupMenuItem(
                                 value: 'restart',
                                 height: 32,
                                 child: Row(
                                   children: [
-                                    Icon(CupertinoIcons.arrow_counterclockwise, size: 14, color: Colors.white70),
-                                    SizedBox(width: 8),
-                                    Text('Play from Start', style: TextStyle(fontSize: 12.5)),
+                                    Icon(Icons.replay_rounded, size: 15, color: textSecondary),
+                                    const SizedBox(width: 8),
+                                    Text('Play from Start', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                                   ],
                                 ),
                               ),
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'queue',
                               height: 32,
                               child: Row(
                                 children: [
-                                  Icon(CupertinoIcons.plus_circle, size: 14, color: Colors.white70),
-                                  SizedBox(width: 8),
-                                  Text('Add to Queue', style: TextStyle(fontSize: 12.5)),
+                                  Icon(Icons.playlist_add_rounded, size: 16, color: textSecondary),
+                                  const SizedBox(width: 8),
+                                  Text('Add to Queue', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                                 ],
                               ),
                             ),
                             const PopupMenuDivider(height: 1),
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'explorer',
                               height: 32,
                               child: Row(
                                 children: [
-                                  Icon(CupertinoIcons.folder, size: 14, color: Colors.white70),
-                                  SizedBox(width: 8),
-                                  Text('Show in Explorer', style: TextStyle(fontSize: 12.5)),
+                                  Icon(Icons.folder_open_rounded, size: 15, color: textSecondary),
+                                  const SizedBox(width: 8),
+                                  Text('Show in Explorer', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                                 ],
                               ),
                             ),
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'copy',
                               height: 32,
                               child: Row(
                                 children: [
-                                  Icon(CupertinoIcons.doc_on_clipboard, size: 14, color: Colors.white70),
-                                  SizedBox(width: 8),
-                                  Text('Copy Path', style: TextStyle(fontSize: 12.5)),
+                                  Icon(Icons.content_copy_rounded, size: 15, color: textSecondary),
+                                  const SizedBox(width: 8),
+                                  Text('Copy Path', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                                 ],
                               ),
                             ),
@@ -1121,11 +1223,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.65),
+                              color: isDark ? Colors.black.withValues(alpha: 0.65) : Colors.white.withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Center(
-                              child: Icon(Icons.more_vert, size: 20, color: Colors.white),
+                            child: Center(
+                              child: Icon(Icons.more_vert, size: 20, color: textPrimary),
                             ),
                           ),
                         ),
@@ -1150,7 +1252,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                         ],
                       ),
                       child: const Center(
-                        child: Icon(CupertinoIcons.play_fill, size: 19, color: Colors.white),
+                        child: Icon(Icons.play_arrow_rounded, size: 24, color: Colors.white),
                       ),
                     ),
                   ),
@@ -1219,6 +1321,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       letterSpacing: 0.2,
+                      color: textPrimary,
                     ),
                   ),
                 ),
@@ -1231,7 +1334,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                           ? 'Resume at ${_formatDuration(savedPos)}'
                           : 'Unwatched',
                       style: AppTheme.caption.copyWith(
-                        color: savedPos.inSeconds > 5 ? AppTheme.accent : AppTheme.textTertiary,
+                        color: savedPos.inSeconds > 5 ? AppTheme.accent : textSecondary,
                         fontSize: 11,
                         fontWeight: savedPos.inSeconds > 5 ? FontWeight.w600 : FontWeight.w400,
                       ),
@@ -1239,7 +1342,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                     Text(
                       ext,
                       style: AppTheme.caption.copyWith(
-                        color: AppTheme.textTertiary,
+                        color: textSecondary,
                         fontSize: 10.5,
                       ),
                     ),
@@ -1254,6 +1357,14 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
   }
 
   Widget _videoListTile(File file) {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+    final cardBg = isDark
+        ? const Color(0xFF0F1420).withValues(alpha: 0.18)
+        : Colors.white.withValues(alpha: 0.30);
+
     final storage = ref.read(storageServiceProvider);
     final rawName = file.path.split(RegExp(r'[/\\]')).last;
     final ext = rawName.contains('.') ? rawName.split('.').last.toUpperCase() : 'VIDEO';
@@ -1277,9 +1388,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
 
     return FrostedGlass(
       borderRadius: 12,
+      blur: 35,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      fillColor: const Color(0xFF10121A).withValues(alpha: 0.75),
-      borderColor: AppTheme.glassBorder,
+      fillColor: cardBg,
+      borderColor: borderCol,
       onTap: () {
         ref.read(playlistProvider.notifier).addItem(
               PlaylistItem(path: file.path, title: cleanTitle),
@@ -1294,8 +1406,8 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
             child: Container(
               width: 80,
               height: 48,
-              decoration: const BoxDecoration(
-                color: Color(0xFF141620),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF141620) : const Color(0xFFE2E8F0),
               ),
               child: Stack(
                 fit: StackFit.expand,
@@ -1318,7 +1430,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                        child: Icon(CupertinoIcons.play_fill, size: 12, color: Colors.white),
+                        child: Icon(Icons.play_arrow_rounded, size: 16, color: Colors.white),
                       ),
                     ),
                   ),
@@ -1333,9 +1445,9 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.6),
+              color: isDark ? Colors.black.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppTheme.glassBorder),
+              border: Border.all(color: borderCol),
             ),
             child: Text(
               ext,
@@ -1365,17 +1477,18 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                     style: AppTheme.bodySmall.copyWith(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
+                      color: textPrimary,
                     ),
                   ),
                 ),
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    const Icon(CupertinoIcons.folder, size: 11, color: AppTheme.textTertiary),
+                    Icon(Icons.folder_open_rounded, size: 12, color: textSecondary),
                     const SizedBox(width: 4),
                     Text(
                       parentDir,
-                      style: AppTheme.caption.copyWith(color: AppTheme.textTertiary, fontSize: 11),
+                      style: AppTheme.caption.copyWith(color: textSecondary, fontSize: 11),
                     ),
                     if (savedPos.inSeconds > 5) ...[
                       const SizedBox(width: 10),
@@ -1408,7 +1521,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
           Text(
             _formatFileSize(sizeBytes),
             style: AppTheme.caption.copyWith(
-              color: Colors.white70,
+              color: textSecondary,
               fontWeight: FontWeight.w600,
               fontSize: 12,
             ),
@@ -1419,10 +1532,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
           // 5. 3-Dots Menu
           PopupMenuButton<String>(
             tooltip: 'Options',
-            color: AppTheme.surface.withValues(alpha: 0.95),
+            color: isDark ? AppTheme.surface.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: AppTheme.glassBorder),
+              side: BorderSide(color: borderCol),
             ),
             onSelected: (val) async {
               if (val == 'play') {
@@ -1461,60 +1574,60 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
               }
             },
             itemBuilder: (ctx) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'play',
                 height: 32,
                 child: Row(
                   children: [
-                    Icon(CupertinoIcons.play_fill, size: 14, color: AppTheme.accent),
-                    SizedBox(width: 8),
-                    Text('Play Now', style: TextStyle(fontSize: 12.5)),
+                    const Icon(Icons.play_arrow_rounded, size: 16, color: AppTheme.accent),
+                    const SizedBox(width: 8),
+                    Text('Play Now', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                   ],
                 ),
               ),
               if (savedPos.inSeconds > 5)
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'restart',
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(CupertinoIcons.arrow_counterclockwise, size: 14, color: Colors.white70),
-                      SizedBox(width: 8),
-                      Text('Play from Start', style: TextStyle(fontSize: 12.5)),
+                      Icon(Icons.replay_rounded, size: 15, color: textSecondary),
+                      const SizedBox(width: 8),
+                      Text('Play from Start', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                     ],
                   ),
                 ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'queue',
                 height: 32,
                 child: Row(
                   children: [
-                    Icon(CupertinoIcons.plus_circle, size: 14, color: Colors.white70),
-                    SizedBox(width: 8),
-                    Text('Add to Queue', style: TextStyle(fontSize: 12.5)),
+                    Icon(Icons.playlist_add_rounded, size: 16, color: textSecondary),
+                    const SizedBox(width: 8),
+                    Text('Add to Queue', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                   ],
                 ),
               ),
               const PopupMenuDivider(height: 1),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'explorer',
                 height: 32,
                 child: Row(
                   children: [
-                    Icon(CupertinoIcons.folder, size: 14, color: Colors.white70),
-                    SizedBox(width: 8),
-                    Text('Show in Explorer', style: TextStyle(fontSize: 12.5)),
+                    Icon(Icons.folder_open_rounded, size: 15, color: textSecondary),
+                    const SizedBox(width: 8),
+                    Text('Show in Explorer', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'copy',
                 height: 32,
                 child: Row(
                   children: [
-                    Icon(CupertinoIcons.doc_on_clipboard, size: 14, color: Colors.white70),
-                    SizedBox(width: 8),
-                    Text('Copy Path', style: TextStyle(fontSize: 12.5)),
+                    Icon(Icons.content_copy_rounded, size: 15, color: textSecondary),
+                    const SizedBox(width: 8),
+                    Text('Copy Path', style: TextStyle(fontSize: 12.5, color: textPrimary)),
                   ],
                 ),
               ),
@@ -1523,11 +1636,11 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Center(
-                child: Icon(Icons.more_vert, size: 20, color: Colors.white70),
+              child: Center(
+                child: Icon(Icons.more_vert, size: 20, color: textSecondary),
               ),
             ),
           ),
@@ -1589,25 +1702,26 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
   }
 
   Widget _emptyLibraryView() {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+    final cardBg = isDark
+        ? const Color(0xFF0F1420).withValues(alpha: 0.18)
+        : Colors.white.withValues(alpha: 0.35);
+
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 560),
+        child: FrostedGlass(
+          borderRadius: 24,
           padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
-          decoration: BoxDecoration(
-            color: AppTheme.surface.withValues(alpha: 0.65),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.glassBorder, width: 0.8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.6),
-                blurRadius: 36,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
+          blur: 36,
+          fillColor: cardBg,
+          borderColor: borderCol,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
@@ -1625,19 +1739,23 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                   ],
                 ),
                 child: const Center(
-                  child: Icon(CupertinoIcons.film_fill, size: 36, color: Color(0xFF04131F)),
+                  child: Icon(Icons.movie_rounded, size: 36, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 22),
               Text(
                 'Build Your Cinema Library',
-                style: AppTheme.headline.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.4),
+                style: AppTheme.headline.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
+                  color: textPrimary,
+                ),
               ),
               const SizedBox(height: 10),
               Text(
                 'Import your local Movies, Series, or Videos folders to browse your collection with instant 4K HDR playback and auto-generated high-resolution thumbnails.',
                 textAlign: TextAlign.center,
-                style: AppTheme.caption.copyWith(color: AppTheme.textSecondary, height: 1.45),
+                style: AppTheme.caption.copyWith(color: textSecondary, height: 1.45),
               ),
               const SizedBox(height: 28),
               Wrap(
@@ -1647,7 +1765,7 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                 children: [
                   ElevatedButton.icon(
                     onPressed: _importFolder,
-                    icon: const Icon(CupertinoIcons.folder_badge_plus, size: 16),
+                    icon: const Icon(Icons.create_new_folder_rounded, size: 16),
                     label: const Text('Import Video Folder'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.accent,
@@ -1660,10 +1778,10 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
                   ),
                   OutlinedButton.icon(
                     onPressed: _importFiles,
-                    icon: const Icon(CupertinoIcons.plus, size: 16, color: Colors.white),
-                    label: const Text('Add Media Files', style: TextStyle(color: Colors.white)),
+                    icon: Icon(Icons.add_rounded, size: 16, color: textPrimary),
+                    label: Text('Add Media Files', style: TextStyle(color: textPrimary)),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppTheme.glassBorderHover),
+                      side: BorderSide(color: borderCol),
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       textStyle: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
@@ -1675,18 +1793,18 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.04),
+                  color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                  border: Border.all(color: borderCol),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(CupertinoIcons.sparkles, size: 13, color: AppTheme.accent),
+                    const Icon(Icons.auto_awesome_rounded, size: 14, color: AppTheme.accent),
                     const SizedBox(width: 8),
                     Text(
                       'Drag & drop video files or folders anywhere onto this window',
-                      style: AppTheme.caption.copyWith(color: AppTheme.textTertiary, fontSize: 11),
+                      style: AppTheme.caption.copyWith(color: textSecondary, fontSize: 11),
                     ),
                   ],
                 ),
@@ -1695,7 +1813,8 @@ class _LibraryViewState extends ConsumerState<LibraryView> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   String _formatDuration(Duration d) {

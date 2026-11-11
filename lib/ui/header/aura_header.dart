@@ -1,6 +1,6 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -9,11 +9,8 @@ import '../../player/player_models.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
 import '../modals/about_modal.dart';
-import '../modals/media_info_modal.dart';
 import '../modals/open_network_modal.dart';
 import '../modals/shortcuts_guide_modal.dart';
-import '../modals/video_adjustments_modal.dart';
-import '../modals/cinema_studio_modal.dart';
 import '../player/audio_sub_sheet.dart';
 
 class AuraHeader extends ConsumerStatefulWidget {
@@ -88,6 +85,8 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
     final windowNotifier = ref.read(windowControlsProvider.notifier);
     final playlist = ref.watch(playlistProvider);
     final playlistNotifier = ref.read(playlistProvider.notifier);
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark;
     final hasActiveMedia = playlist.currentItem != null;
 
     return AnimatedOpacity(
@@ -96,15 +95,23 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
       opacity: widget.isVisible ? 1.0 : 0.0,
       child: IgnorePointer(
         ignoring: !widget.isVisible,
-        child: Container(
-          height: 52,
-          padding: const EdgeInsets.only(left: 14, right: 0),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0A0A10).withValues(alpha: 0.92),
-            border: const Border(
-              bottom: BorderSide(color: AppTheme.glassBorder, width: 0.6),
-            ),
-          ),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+            child: Container(
+              height: 52,
+              padding: const EdgeInsets.only(left: 14, right: 0),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF0A0A10).withValues(alpha: 0.45)
+                    : Colors.white.withValues(alpha: 0.60),
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder,
+                    width: 0.8,
+                  ),
+                ),
+              ),
           child: Row(
             children: [
               // 1. Left: Brand & Studio Hub
@@ -151,14 +158,14 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 1.2,
                                   fontSize: 12.5,
-                                  color: Colors.white,
+                                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                                 ),
                               ),
                               Text(
                                 ' PLAYER',
                                 style: AppTheme.body.copyWith(
                                   fontWeight: FontWeight.w400,
-                                  color: AppTheme.textSecondary,
+                                  color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
                                   letterSpacing: 0.8,
                                   fontSize: 12.5,
                                 ),
@@ -198,42 +205,10 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                 ),
               ),
 
-              const SizedBox(width: 14),
-
-              // Return to Library Button (when inside video mode)
-              if (activeTab == AuraTab.player) ...[
-                InkWell(
-                  onTap: () => playlistNotifier.stopAndClose(),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.glassBorder, width: 0.8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(CupertinoIcons.arrow_left, size: 13, color: Colors.white),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Library',
-                          style: AppTheme.caption.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ],
+              const SizedBox(width: 8),
 
               // Modern Consolidated "VLC Studio" Command Hub Button
-              _vlcStudioButton(context, playlist, playlistNotifier, windowNotifier),
+              _vlcStudioButton(context, playlist, playlistNotifier, windowNotifier, isDark),
 
               const SizedBox(width: 12),
 
@@ -246,12 +221,20 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF13131A).withValues(alpha: 0.92),
+                        color: isDark
+                            ? const Color(0xFF13131A).withValues(alpha: 0.38)
+                            : Colors.white.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : const Color(0xFF0F172A).withValues(alpha: 0.10),
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.5),
+                            color: isDark
+                                ? Colors.black.withValues(alpha: 0.45)
+                                : const Color(0xFF0F172A).withValues(alpha: 0.08),
                             blurRadius: 18,
                             offset: const Offset(0, 4),
                           ),
@@ -262,41 +245,37 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                         children: [
                           if (hasActiveMedia) ...[
                             _navPill(
-                              icon: CupertinoIcons.play_circle_fill,
+                              icon: Icons.play_circle_fill_rounded,
                               label: 'Now Playing',
                               isActive: activeTab == AuraTab.player,
                               onTap: () => activeTabNotifier.setTab(AuraTab.player),
+                              isDark: isDark,
                             ),
                             const SizedBox(width: 4),
                           ],
                           _navPill(
-                            icon: CupertinoIcons.film_fill,
-                            label: 'Cinema',
+                            icon: Icons.video_library_rounded,
+                            label: 'Library',
                             isActive: activeTab == AuraTab.library,
                             onTap: () => activeTabNotifier.setTab(AuraTab.library),
+                            isDark: isDark,
                           ),
                           const SizedBox(width: 4),
                           _navPill(
-                            icon: CupertinoIcons.tv_fill,
+                            icon: Icons.live_tv_rounded,
                             label: 'Live TV',
                             badge: 'LIVE',
                             isActive: activeTab == AuraTab.live,
                             onTap: () => activeTabNotifier.setTab(AuraTab.live),
+                            isDark: isDark,
                           ),
                           const SizedBox(width: 4),
                           _navPill(
-                            icon: CupertinoIcons.list_bullet,
-                            label: 'Up Next',
-                            badge: playlist.items.isNotEmpty ? '${playlist.items.length}' : null,
-                            isActive: activeTab == AuraTab.playlist,
-                            onTap: () => activeTabNotifier.setTab(AuraTab.playlist),
-                          ),
-                          const SizedBox(width: 4),
-                          _navPill(
-                            icon: CupertinoIcons.clock_fill,
+                            icon: Icons.history_rounded,
                             label: 'History',
                             isActive: activeTab == AuraTab.history,
                             onTap: () => activeTabNotifier.setTab(AuraTab.history),
+                            isDark: isDark,
                           ),
                         ],
                       ),
@@ -310,32 +289,38 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Fast Import Action Capsule
-                  _importMenuButton(context),
+                  _importMenuButton(context, isDark),
 
                   const SizedBox(width: 6),
 
                   // Always on Top Toggle
                   _quickActionIcon(
                     tooltip: windowState.isAlwaysOnTop ? 'Unpin (Always on Top Active)' : 'Always on Top',
-                    icon: CupertinoIcons.pin_fill,
+                    icon: Icons.push_pin_rounded,
                     isActive: windowState.isAlwaysOnTop,
                     onTap: () => windowNotifier.toggleAlwaysOnTop(),
+                    isDark: isDark,
                   ),
 
                   // Mini Player PiP Mode
                   _quickActionIcon(
                     tooltip: windowState.isMiniMode ? 'Standard Window' : 'Mini Player (PiP Mode)',
-                    icon: CupertinoIcons.rectangle_on_rectangle,
+                    icon: Icons.picture_in_picture_alt_rounded,
                     isActive: windowState.isMiniMode,
                     onTap: () => windowNotifier.toggleMiniMode(),
+                    isDark: isDark,
                   ),
 
-                  // Cinema Studio & More Options (3-dots)
+                  // Dedicated Theme Mode Switcher (Clean Icon-only, no box background)
                   _quickActionIcon(
-                    tooltip: 'Cinema Studio & Options (I)',
-                    icon: Icons.more_vert_rounded,
+                    tooltip: isDark
+                        ? 'Switch to Light Glass Theme'
+                        : 'Switch to Dark Obsidian Glass Theme',
+                    icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
                     isActive: false,
-                    onTap: () => CinemaStudioModal.show(context, widget.playerWrapper),
+                    isDark: isDark,
+                    iconColor: isDark ? const Color(0xFFFBBF24) : const Color(0xFF0284C7),
+                    onTap: () => ref.read(themeModeProvider.notifier).toggleTheme(),
                   ),
 
                   const SizedBox(width: 8),
@@ -343,12 +328,20 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                   // Windows Frameless Titlebar Controls (Minimize, Maximize, Close)
                   _windowsButton(
                     tooltip: 'Minimize',
-                    child: const Icon(CupertinoIcons.minus, size: 14, color: AppTheme.textPrimary),
+                    child: Icon(
+                      Icons.remove_rounded,
+                      size: 15,
+                      color: isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary,
+                    ),
                     onTap: () => windowManager.minimize(),
                   ),
                   _windowsButton(
                     tooltip: 'Maximize',
-                    child: const Icon(CupertinoIcons.square, size: 12, color: AppTheme.textPrimary),
+                    child: Icon(
+                      Icons.crop_square_rounded,
+                      size: 14,
+                      color: isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary,
+                    ),
                     onTap: () async {
                       if (await windowManager.isMaximized()) {
                         windowManager.unmaximize();
@@ -364,9 +357,11 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                       tooltip: 'Close',
                       hoverColor: const Color(0xFFE81123),
                       child: Icon(
-                        CupertinoIcons.clear,
-                        size: 14,
-                        color: _isCloseHovered ? Colors.white : AppTheme.textPrimary,
+                        Icons.close_rounded,
+                        size: 15,
+                        color: _isCloseHovered
+                            ? Colors.white
+                            : (isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary),
                       ),
                       onTap: () => windowManager.close(),
                     ),
@@ -377,7 +372,9 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _navPill({
@@ -386,7 +383,10 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
     required bool isActive,
     required VoidCallback onTap,
     String? badge,
+    bool isDark = true,
   }) {
+    final inactiveColor = isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B);
+    final activeColor = Colors.white;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -398,7 +398,7 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
           color: isActive ? null : Colors.transparent,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isActive ? Colors.white.withValues(alpha: 0.3) : Colors.transparent,
+            color: isActive ? Colors.white.withValues(alpha: 0.35) : Colors.transparent,
           ),
           boxShadow: isActive
               ? [
@@ -415,15 +415,15 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
           children: [
             Icon(
               icon,
-              size: 13,
-              color: isActive ? const Color(0xFF04131F) : AppTheme.textSecondary,
+              size: 15,
+              color: isActive ? activeColor : inactiveColor,
             ),
             const SizedBox(width: 6),
             Text(
               label,
-              style: AppTheme.caption.copyWith(
-                color: isActive ? const Color(0xFF04131F) : AppTheme.textSecondary,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+              style: TextStyle(
+                color: isActive ? activeColor : inactiveColor,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w700,
                 fontSize: 11.5,
               ),
             ),
@@ -434,7 +434,9 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                 decoration: BoxDecoration(
                   color: badge == 'LIVE'
                       ? const Color(0xFFEF4444)
-                      : (isActive ? const Color(0xFF04131F).withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.12)),
+                      : (isActive
+                          ? const Color(0xFF04131F).withValues(alpha: 0.18)
+                          : (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08))),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -456,7 +458,7 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
                       style: AppTheme.caption.copyWith(
                         fontSize: 8.5,
                         fontWeight: FontWeight.w800,
-                        color: badge == 'LIVE' ? Colors.white : (isActive ? const Color(0xFF04131F) : Colors.white),
+                        color: badge == 'LIVE' ? Colors.white : (isActive ? const Color(0xFF04131F) : inactiveColor),
                         letterSpacing: 0.3,
                       ),
                     ),
@@ -475,19 +477,20 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
     PlaylistState playlist,
     PlaylistNotifier playlistNotifier,
     WindowControlsNotifier windowNotifier,
+    bool isDark,
   ) {
     return PopupMenuButton<String>(
       tooltip: 'VLC Studio Controls',
       offset: const Offset(0, 38),
-      color: const Color(0xFF14141B).withValues(alpha: 0.96),
+      color: isDark ? const Color(0xFF14141B).withValues(alpha: 0.96) : Colors.white.withValues(alpha: 0.96),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: AppTheme.glassBorder),
+        side: BorderSide(color: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder),
       ),
       onSelected: (val) async {
         switch (val) {
           case 'studio_hud':
-            CinemaStudioModal.show(context, widget.playerWrapper);
+            windowNotifier.toggleInspector();
             break;
           case 'vol_200':
             widget.playerWrapper.setVolume(200.0);
@@ -547,7 +550,7 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
             widget.playerWrapper.setAspectRatio('21:9');
             break;
           case 'adjustments':
-            VideoAdjustmentsModal.show(context, widget.playerWrapper);
+            windowNotifier.openInspector(tab: 0);
             break;
           case 'snapshot':
             final path = await widget.playerWrapper.takeSnapshot();
@@ -561,7 +564,7 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
             windowNotifier.toggleFullscreen();
             break;
           case 'media_info':
-            MediaInfoModal.show(context, widget.playerWrapper);
+            windowNotifier.openInspector(tab: 3);
             break;
           case 'shortcuts':
             ShortcutsGuideModal.show(context);
@@ -574,66 +577,74 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
         }
       },
       itemBuilder: (ctx) => [
-        // Section: Media & Playback
         _headerMenuItem('PRO STUDIO SUITE'),
-        _menuRow('studio_hud', 'Cinema Studio Pro HUD (Full Suite)', 'I', CupertinoIcons.slider_horizontal_3),
+        _menuRow('studio_hud', 'Cinema Studio Pro HUD (Full Suite)', 'I', Icons.tune_rounded, isDark),
         const PopupMenuDivider(height: 1),
 
         _headerMenuItem('PLAYBACK & MEDIA'),
-        _menuRow('play_pause', 'Play / Pause', 'Space', CupertinoIcons.play_arrow_solid),
-        _menuRow('stop', 'Stop & Return to Library', 'S', CupertinoIcons.stop_fill),
-        _menuRow('prev', 'Previous Video', 'P', CupertinoIcons.backward_fill),
-        _menuRow('next', 'Next Video', 'N', CupertinoIcons.forward_fill),
-        _menuRow('speed_15', 'Speed: Fast 1.5x', ']', CupertinoIcons.gauge),
-        _menuRow('speed_2', 'Speed: 2.0x', '', CupertinoIcons.forward),
+        _menuRow('play_pause', 'Play / Pause', 'Space', Icons.play_arrow_rounded, isDark),
+        _menuRow('stop', 'Stop & Return to Library', 'S', Icons.stop_rounded, isDark),
+        _menuRow('prev', 'Previous Video', 'P', Icons.skip_previous_rounded, isDark),
+        _menuRow('next', 'Next Video', 'N', Icons.skip_next_rounded, isDark),
+        _menuRow('speed_15', 'Speed: Fast 1.5x', ']', Icons.speed_rounded, isDark),
+        _menuRow('speed_2', 'Speed: 2.0x', '', Icons.fast_forward_rounded, isDark),
         const PopupMenuDivider(height: 1),
 
-        // Section: Audio & Video
         _headerMenuItem('AUDIO & VIDEO TOOLS'),
-        _menuRow('audio_sheet', 'Audio & Subtitle Tracks...', '', CupertinoIcons.captions_bubble_fill),
-        _menuRow('vol_200', 'Volume Boost 200% (VLC Max)', '', CupertinoIcons.volume_up),
-        _menuRow('vol_150', 'Volume Boost 150%', '', CupertinoIcons.volume_up),
-        _menuRow('mute', 'Mute / Unmute', 'M', CupertinoIcons.volume_off),
-        _menuRow('ratio_16_9', 'Aspect Ratio: 16:9', '', CupertinoIcons.rectangle_split_3x1),
-        _menuRow('ratio_21_9', 'Aspect Ratio: 21:9 Ultrawide', '', CupertinoIcons.rectangle_arrow_up_right_arrow_down_left),
-        _menuRow('adjustments', 'Video Adjustments & Filters...', '', CupertinoIcons.dial),
-        _menuRow('snapshot', 'Take Snapshot / Frame Capture', 'Shift+S', CupertinoIcons.camera_fill),
-        _menuRow('fullscreen', 'Toggle Fullscreen', 'F', CupertinoIcons.fullscreen),
+        _menuRow('audio_sheet', 'Audio & Subtitle Tracks...', '', Icons.subtitles_rounded, isDark),
+        _menuRow('vol_200', 'Volume Boost 200% (VLC Max)', '', Icons.volume_up_rounded, isDark),
+        _menuRow('vol_150', 'Volume Boost 150%', '', Icons.volume_up_rounded, isDark),
+        _menuRow('mute', 'Mute / Unmute', 'M', Icons.volume_off_rounded, isDark),
+        _menuRow('ratio_16_9', 'Aspect Ratio: 16:9', '', Icons.aspect_ratio_rounded, isDark),
+        _menuRow('ratio_21_9', 'Aspect Ratio: 21:9 Ultrawide', '', Icons.fullscreen_rounded, isDark),
+        _menuRow('adjustments', 'Video Adjustments & Filters...', '', Icons.tune_rounded, isDark),
+        _menuRow('snapshot', 'Take Snapshot / Frame Capture', 'Shift+S', Icons.camera_alt_rounded, isDark),
+        _menuRow('fullscreen', 'Toggle Fullscreen', 'F', Icons.fullscreen_rounded, isDark),
         const PopupMenuDivider(height: 1),
 
-        // Section: Media Inputs & System
         _headerMenuItem('SYSTEM & FILE INPUTS'),
-        _menuRow('open_file', 'Open Video File...', 'Ctrl+O', CupertinoIcons.doc_fill),
-        _menuRow('open_folder', 'Open Folder to Library...', 'Ctrl+F', CupertinoIcons.folder_fill),
-        _menuRow('open_url', 'Open Network URL / IPTV...', 'Ctrl+N', CupertinoIcons.globe),
-        _menuRow('media_info', 'Media & Codec Information', 'Ctrl+I', CupertinoIcons.info_circle_fill),
-        _menuRow('shortcuts', 'Keyboard Shortcuts Guide', '', CupertinoIcons.keyboard),
-        _menuRow('about', 'About AuraPlayer Studio', '', CupertinoIcons.sparkles),
+        _menuRow('open_file', 'Open Video File...', 'Ctrl+O', Icons.video_file_rounded, isDark),
+        _menuRow('open_folder', 'Open Folder to Library...', 'Ctrl+F', Icons.folder_rounded, isDark),
+        _menuRow('open_url', 'Open Network URL / IPTV...', 'Ctrl+N', Icons.public_rounded, isDark),
+        _menuRow('media_info', 'Media & Codec Information', 'Ctrl+I', Icons.info_outline_rounded, isDark),
+        _menuRow('shortcuts', 'Keyboard Shortcuts Guide', '', Icons.keyboard_rounded, isDark),
+        _menuRow('about', 'About AuraPlayer Studio', '', Icons.auto_awesome_rounded, isDark),
         const PopupMenuDivider(height: 1),
-        _menuRow('exit', 'Exit AuraPlayer', 'Ctrl+Q', CupertinoIcons.power),
+        _menuRow('exit', 'Exit AuraPlayer', 'Ctrl+Q', Icons.power_settings_new_rounded, isDark),
       ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppTheme.glassBorder, width: 0.8),
+          border: Border.all(
+            color: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder,
+            width: 0.8,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(CupertinoIcons.slider_horizontal_3, size: 13, color: AppTheme.accentCyan),
+            Icon(
+              Icons.tune_rounded,
+              size: 14,
+              color: isDark ? AppTheme.accentCyan : const Color(0xFF0284C7),
+            ),
             const SizedBox(width: 5),
             Text(
               'Studio',
-              style: AppTheme.caption.copyWith(
-                color: Colors.white,
+              style: TextStyle(
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                 fontWeight: FontWeight.w600,
                 fontSize: 11.5,
               ),
             ),
             const SizedBox(width: 3),
-            const Icon(CupertinoIcons.chevron_down, size: 9, color: AppTheme.textTertiary),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 14,
+              color: isDark ? AppTheme.textTertiary : AppTheme.lightTextSecondary,
+            ),
           ],
         ),
       ),
@@ -656,38 +667,50 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
     );
   }
 
-  PopupMenuItem<String> _menuRow(String value, String title, String shortcut, IconData icon) {
+  PopupMenuItem<String> _menuRow(
+    String value,
+    String title,
+    String shortcut,
+    IconData icon,
+    bool isDark,
+  ) {
     return PopupMenuItem<String>(
       value: value,
       height: 32,
       child: Row(
         children: [
-          Icon(icon, size: 14, color: Colors.white70),
+          Icon(icon, size: 15, color: isDark ? AppTheme.accentCyan : const Color(0xFF0284C7)),
           const SizedBox(width: 9),
           Expanded(
             child: Text(
               title,
-              style: AppTheme.bodySmall.copyWith(fontSize: 12),
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+              ),
             ),
           ),
           if (shortcut.isNotEmpty)
             Text(
               shortcut,
-              style: AppTheme.caption.copyWith(fontSize: 10, color: AppTheme.textTertiary),
+              style: TextStyle(
+                fontSize: 10,
+                color: isDark ? AppTheme.textTertiary : AppTheme.lightTextSecondary,
+              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _importMenuButton(BuildContext context) {
+  Widget _importMenuButton(BuildContext context, bool isDark) {
     return PopupMenuButton<String>(
       tooltip: 'Import Video Media',
       offset: const Offset(0, 38),
-      color: const Color(0xFF14141B).withValues(alpha: 0.96),
+      color: isDark ? const Color(0xFF14141B).withValues(alpha: 0.96) : Colors.white.withValues(alpha: 0.96),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppTheme.glassBorder),
+        side: BorderSide(color: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder),
       ),
       onSelected: (val) {
         if (val == 'folder') _openFolder();
@@ -696,48 +719,72 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
         if (val == 'url') OpenNetworkModal.show(context);
       },
       itemBuilder: (ctx) => [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'folder',
           height: 34,
           child: Row(
             children: [
-              Icon(CupertinoIcons.folder_badge_plus, size: 15, color: AppTheme.accent),
-              SizedBox(width: 9),
-              Text('Import Folder to Library...', style: TextStyle(fontSize: 12.5)),
+              const Icon(Icons.create_new_folder_rounded, size: 15, color: AppTheme.accent),
+              const SizedBox(width: 9),
+              Text(
+                'Import Folder to Library...',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                ),
+              ),
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'file',
           height: 34,
           child: Row(
             children: [
-              Icon(CupertinoIcons.doc_fill, size: 15, color: Colors.white70),
-              SizedBox(width: 9),
-              Text('Open Video File... (Ctrl+O)', style: TextStyle(fontSize: 12.5)),
+              Icon(Icons.video_file_rounded, size: 15, color: isDark ? Colors.white70 : AppTheme.lightTextSecondary),
+              const SizedBox(width: 9),
+              Text(
+                'Open Video File... (Ctrl+O)',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                ),
+              ),
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'files',
           height: 34,
           child: Row(
             children: [
-              Icon(CupertinoIcons.doc_on_doc_fill, size: 15, color: Colors.white70),
-              SizedBox(width: 9),
-              Text('Open Multiple Files...', style: TextStyle(fontSize: 12.5)),
+              Icon(Icons.video_collection_rounded, size: 15, color: isDark ? Colors.white70 : AppTheme.lightTextSecondary),
+              const SizedBox(width: 9),
+              Text(
+                'Open Multiple Files...',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                ),
+              ),
             ],
           ),
         ),
         const PopupMenuDivider(height: 1),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'url',
           height: 34,
           child: Row(
             children: [
-              Icon(CupertinoIcons.globe, size: 15, color: AppTheme.accentCyan),
-              SizedBox(width: 9),
-              Text('Open Network Stream (Ctrl+N)', style: TextStyle(fontSize: 12.5)),
+              const Icon(Icons.public_rounded, size: 15, color: AppTheme.accentCyan),
+              const SizedBox(width: 9),
+              Text(
+                'Open Network Stream (Ctrl+N)',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                ),
+              ),
             ],
           ),
         ),
@@ -745,11 +792,14 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         decoration: BoxDecoration(
-          gradient: AppTheme.auraGradient,
+          color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.7) : const Color(0xFFE0F2FE).withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? AppTheme.accentCyan.withValues(alpha: 0.5) : const Color(0xFF0284C7).withValues(alpha: 0.4),
+          ),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.accent.withValues(alpha: 0.4),
+              color: AppTheme.accent.withValues(alpha: isDark ? 0.25 : 0.15),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -758,12 +808,12 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(CupertinoIcons.plus, size: 13, color: Color(0xFF04131F)),
+            Icon(Icons.add_rounded, size: 15, color: isDark ? AppTheme.accentCyan : const Color(0xFF0284C7)),
             const SizedBox(width: 4),
             Text(
               'Add Media',
-              style: AppTheme.caption.copyWith(
-                color: const Color(0xFF04131F),
+              style: TextStyle(
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontWeight: FontWeight.w700,
                 fontSize: 11.5,
               ),
@@ -778,6 +828,8 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
     required String tooltip,
     required IconData icon,
     bool isActive = false,
+    bool isDark = true,
+    Color? iconColor,
     required VoidCallback onTap,
   }) {
     return Tooltip(
@@ -794,8 +846,11 @@ class _AuraHeaderState extends ConsumerState<AuraHeader> {
           ),
           child: Icon(
             icon,
-            size: 14,
-            color: isActive ? AppTheme.accent : AppTheme.textSecondary,
+            size: 16,
+            color: iconColor ??
+                (isActive
+                    ? AppTheme.accent
+                    : (isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A))),
           ),
         ),
       ),

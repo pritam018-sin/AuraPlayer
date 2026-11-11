@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,13 +12,12 @@ import '../../player/player_models.dart';
 import '../../state/player_provider.dart';
 import '../../theme/app_theme.dart';
 import '../header/aura_header.dart';
-import '../modals/media_info_modal.dart';
 import '../modals/open_network_modal.dart';
-import '../modals/cinema_studio_modal.dart';
 import 'aura_loading_overlay.dart';
 import 'context_menu.dart';
 import 'floating_controls.dart';
 import 'playlist_drawer.dart';
+import 'unified_inspector_drawer.dart';
 
 class VideoSurface extends ConsumerStatefulWidget {
   final AuraPlayerWrapper playerWrapper;
@@ -203,9 +201,9 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
         break;
       case LogicalKeyboardKey.keyI:
         if (isControl) {
-          MediaInfoModal.show(context, widget.playerWrapper);
+          ref.read(windowControlsProvider.notifier).openInspector(tab: 3);
         } else {
-          CinemaStudioModal.show(context, widget.playerWrapper);
+          ref.read(windowControlsProvider.notifier).toggleInspector();
         }
         _onUserActivity();
         break;
@@ -340,8 +338,8 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              _seekRippleLeft ? CupertinoIcons.gobackward_10 : CupertinoIcons.goforward_10,
-                              size: 20,
+                              _seekRippleLeft ? Icons.replay_10_rounded : Icons.forward_10_rounded,
+                              size: 24,
                               color: AppTheme.accent,
                             ),
                             const SizedBox(width: 8),
@@ -357,15 +355,23 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
 
                 // Top Aura Header & Bottom Floating Controls (Normal Window & Fullscreen)
                 if (!windowState.isMiniMode) ...[
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: AuraHeader(
-                      playerWrapper: widget.playerWrapper,
-                      isVisible: _controlsVisible,
+                  if (windowState.isFullscreen)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildFullscreenTopTitle(),
+                    )
+                  else
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: AuraHeader(
+                        playerWrapper: widget.playerWrapper,
+                        isVisible: _controlsVisible,
+                      ),
                     ),
-                  ),
                   Positioned(
                     bottom: 0,
                     left: 0,
@@ -377,10 +383,19 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                   ),
                   if (windowState.isPlaylistOpen)
                     Positioned(
-                      top: 42,
+                      top: windowState.isFullscreen ? 0 : 52,
                       right: 0,
                       bottom: 0,
                       child: const PlaylistDrawer(),
+                    ),
+                  if (windowState.isInspectorOpen)
+                    Positioned(
+                      top: windowState.isFullscreen ? 0 : 52,
+                      right: 0,
+                      bottom: 0,
+                      child: UnifiedInspectorDrawer(
+                        playerWrapper: widget.playerWrapper,
+                      ),
                     ),
                 ] else ...[
                   // Dedicated Mini PiP Overlay
@@ -390,6 +405,54 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                 ],
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullscreenTopTitle() {
+    final isLive = widget.playerWrapper.isLiveStream;
+    final title = widget.playerWrapper.currentTitle ??
+        (isLive ? 'Live Stream' : 'Video');
+
+    return AnimatedOpacity(
+      opacity: _controlsVisible ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+      child: IgnorePointer(
+        ignoring: !_controlsVisible,
+        child: Container(
+          color: Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 26),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.headline.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.90),
+                        blurRadius: 14,
+                        offset: const Offset(0, 2),
+                      ),
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.60),
+                        blurRadius: 24,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -476,7 +539,7 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                           color: Colors.white.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(CupertinoIcons.arrow_up_right_square, size: 14, color: Colors.white),
+                        child: const Icon(Icons.open_in_full_rounded, size: 14, color: Colors.white),
                       ),
                     ),
                   ),
@@ -493,7 +556,7 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                           color: Colors.white.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(CupertinoIcons.clear, size: 14, color: Colors.white),
+                        child: const Icon(Icons.close_rounded, size: 14, color: Colors.white),
                       ),
                     ),
                   ),
@@ -520,7 +583,7 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                             color: Colors.black.withValues(alpha: 0.45),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(CupertinoIcons.gobackward_10, size: 18, color: Colors.white),
+                          child: const Icon(Icons.replay_10_rounded, size: 18, color: Colors.white),
                         ),
                       ),
                       const SizedBox(width: 18),
@@ -544,9 +607,9 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                           ),
                           child: Center(
                             child: Icon(
-                              isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
-                              size: 18,
-                              color: const Color(0xFF04131F),
+                              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                              size: 20,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -564,7 +627,7 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                             color: Colors.black.withValues(alpha: 0.45),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(CupertinoIcons.goforward_10, size: 18, color: Colors.white),
+                          child: const Icon(Icons.forward_10_rounded, size: 18, color: Colors.white),
                         ),
                       ),
                     ],
@@ -628,8 +691,8 @@ class _VideoSurfaceState extends ConsumerState<VideoSurface> {
                       builder: (context, snapshot) {
                         final vol = snapshot.data ?? player.state.volume;
                         return Icon(
-                          vol == 0 ? CupertinoIcons.volume_off : CupertinoIcons.volume_up,
-                          size: 14,
+                          vol == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                          size: 16,
                           color: Colors.white70,
                         );
                       },

@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import '../live/live_catalog.dart';
@@ -206,6 +206,15 @@ class PlaylistNotifier extends Notifier<PlaylistState> {
     }
   }
 
+  void clearQueue() {
+    if (state.currentIndex >= 0 && state.currentIndex < state.items.length) {
+      final current = state.items[state.currentIndex];
+      state = PlaylistState(items: [current], currentIndex: 0);
+    } else {
+      state = const PlaylistState();
+    }
+  }
+
   Future<void> stopAndClose() async {
     await ref.read(playerControllerProvider).stop();
     state = const PlaylistState();
@@ -223,12 +232,16 @@ class WindowControlsState {
   final bool isMiniMode;
   final bool isFullscreen;
   final bool isPlaylistOpen;
+  final bool isInspectorOpen;
+  final int inspectorTab; // 0: Video, 1: Audio & EQ, 2: Subtitles, 3: Media Info
 
   const WindowControlsState({
     this.isAlwaysOnTop = false,
     this.isMiniMode = false,
     this.isFullscreen = false,
     this.isPlaylistOpen = false,
+    this.isInspectorOpen = false,
+    this.inspectorTab = 0,
   });
 
   WindowControlsState copyWith({
@@ -236,12 +249,16 @@ class WindowControlsState {
     bool? isMiniMode,
     bool? isFullscreen,
     bool? isPlaylistOpen,
+    bool? isInspectorOpen,
+    int? inspectorTab,
   }) {
     return WindowControlsState(
       isAlwaysOnTop: isAlwaysOnTop ?? this.isAlwaysOnTop,
       isMiniMode: isMiniMode ?? this.isMiniMode,
       isFullscreen: isFullscreen ?? this.isFullscreen,
       isPlaylistOpen: isPlaylistOpen ?? this.isPlaylistOpen,
+      isInspectorOpen: isInspectorOpen ?? this.isInspectorOpen,
+      inspectorTab: inspectorTab ?? this.inspectorTab,
     );
   }
 }
@@ -282,7 +299,11 @@ class WindowControlsNotifier extends Notifier<WindowControlsState> {
   }
 
   void togglePlaylist() {
-    state = state.copyWith(isPlaylistOpen: !state.isPlaylistOpen);
+    final next = !state.isPlaylistOpen;
+    state = state.copyWith(
+      isPlaylistOpen: next,
+      isInspectorOpen: next ? false : state.isInspectorOpen,
+    );
   }
 
   void closePlaylist() {
@@ -290,8 +311,59 @@ class WindowControlsNotifier extends Notifier<WindowControlsState> {
       state = state.copyWith(isPlaylistOpen: false);
     }
   }
+
+  void toggleInspector({int? tab}) {
+    if (state.isInspectorOpen && (tab == null || tab == state.inspectorTab)) {
+      state = state.copyWith(isInspectorOpen: false);
+    } else {
+      state = state.copyWith(
+        isInspectorOpen: true,
+        inspectorTab: tab ?? state.inspectorTab,
+        isPlaylistOpen: false,
+      );
+    }
+  }
+
+  void openInspector({int tab = 0}) {
+    state = state.copyWith(
+      isInspectorOpen: true,
+      inspectorTab: tab,
+      isPlaylistOpen: false,
+    );
+  }
+
+  void closeInspector() {
+    if (state.isInspectorOpen) {
+      state = state.copyWith(isInspectorOpen: false);
+    }
+  }
 }
 
 final windowControlsProvider =
     NotifierProvider<WindowControlsNotifier, WindowControlsState>(
         WindowControlsNotifier.new);
+
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  late final StorageService _storage;
+
+  @override
+  ThemeMode build() {
+    _storage = ref.watch(storageServiceProvider);
+    final saved = _storage.getThemeMode();
+    return saved == 'light' ? ThemeMode.light : ThemeMode.dark;
+  }
+
+  Future<void> toggleTheme() async {
+    final next = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    state = next;
+    await _storage.setThemeMode(next == ThemeMode.light ? 'light' : 'dark');
+  }
+
+  Future<void> setTheme(ThemeMode mode) async {
+    state = mode;
+    await _storage.setThemeMode(mode == ThemeMode.light ? 'light' : 'dark');
+  }
+}
+
+final themeModeProvider =
+    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);

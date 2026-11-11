@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/frosted_glass.dart';
@@ -9,20 +9,31 @@ class ShortcutsGuideModal extends StatelessWidget {
   static Future<void> show(BuildContext context) {
     return showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
-      builder: (ctx) => const ShortcutsGuideModal(),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: const ShortcutsGuideModal(),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+
     return Center(
       child: Material(
         color: Colors.transparent,
         child: FrostedGlass(
           borderRadius: 20,
           padding: const EdgeInsets.all(24),
-          fillColor: AppTheme.surface.withValues(alpha: 0.92),
+          blur: 36,
+          fillColor: isDark
+              ? const Color(0xFF101420).withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.55),
+          borderColor: isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500, maxHeight: 580),
             child: Column(
@@ -34,15 +45,15 @@ class ShortcutsGuideModal extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(CupertinoIcons.keyboard, size: 20, color: AppTheme.accent),
+                        const Icon(Icons.keyboard_rounded, size: 20, color: AppTheme.accent),
                         const SizedBox(width: 10),
                         Text('Shortcuts & Gestures',
-                            style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+                            style: AppTheme.body.copyWith(fontWeight: FontWeight.w700, color: textPrimary)),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(CupertinoIcons.clear_circled_solid,
-                          size: 20, color: AppTheme.textSecondary),
+                      icon: Icon(Icons.close_rounded,
+                          size: 20, color: textSecondary),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -75,6 +86,7 @@ class ShortcutsGuideModal extends StatelessWidget {
                           _row('F  /  Double Click', 'Toggle Fullscreen'),
                           _row('Escape', 'Exit Fullscreen'),
                           _row('Ctrl + L', 'Toggle Playlist Drawer'),
+                          _row('I', 'Toggle Studio Inspector (Video / EQ / Subs)'),
                           _row('Ctrl + I', 'Media & Codec Information'),
                           _row('Shift + S', 'Capture Snapshot (Screenshot)'),
                         ]),

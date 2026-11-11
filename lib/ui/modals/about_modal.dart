@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/frosted_glass.dart';
@@ -8,21 +9,36 @@ class AboutModal extends StatelessWidget {
   static Future<void> show(BuildContext context) {
     return showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.65),
-      builder: (ctx) => const AboutModal(),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: const AboutModal(),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final borderCol = isDark ? AppTheme.glassBorder : AppTheme.lightGlassBorder;
+    final cardBg = isDark
+        ? const Color(0xFF0C101A).withValues(alpha: 0.45)
+        : Colors.white.withValues(alpha: 0.65);
+    final innerBg = isDark
+        ? AppTheme.surfaceSecondary.withValues(alpha: 0.50)
+        : Colors.white.withValues(alpha: 0.70);
+
     return Center(
       child: Material(
         color: Colors.transparent,
         child: FrostedGlass(
           borderRadius: 22,
           padding: const EdgeInsets.all(28),
-          fillColor: AppTheme.surface.withValues(alpha: 0.94),
-          borderColor: AppTheme.glassBorder,
+          fillColor: cardBg,
+          borderColor: borderCol,
+          blur: 35,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),
             child: Column(
@@ -57,7 +73,11 @@ class AboutModal extends StatelessWidget {
                 // Title & Version
                 Text(
                   'AuraPlayer',
-                  style: AppTheme.display.copyWith(fontSize: 24, letterSpacing: 0.5),
+                  style: AppTheme.display.copyWith(
+                    fontSize: 24,
+                    letterSpacing: 0.5,
+                    color: textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Container(
@@ -78,19 +98,19 @@ class AboutModal extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceSecondary.withValues(alpha: 0.6),
+                    color: innerBg,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.glassBorder),
+                    border: Border.all(color: borderCol),
                   ),
                   child: Column(
                     children: [
-                      _infoRow('Organization', 'AuraStudio Corporation'),
-                      const Divider(color: AppTheme.glassBorder, height: 16),
-                      _infoRow('Creator & Lead', 'Pritam'),
-                      const Divider(color: AppTheme.glassBorder, height: 16),
-                      _infoRow('Engine', 'libmpv-2 + Flutter D3D11 Native'),
-                      const Divider(color: AppTheme.glassBorder, height: 16),
-                      _infoRow('License', 'AuraStudio Software License'),
+                      _infoRow('Organization', 'AuraStudio Corporation', textSecondary, textPrimary),
+                      Divider(color: borderCol, height: 16),
+                      _infoRow('Creator & Lead', 'Pritam', textSecondary, textPrimary),
+                      Divider(color: borderCol, height: 16),
+                      _infoRow('Engine', 'libmpv-2 + Flutter D3D11 Native', textSecondary, textPrimary),
+                      Divider(color: borderCol, height: 16),
+                      _infoRow('License', 'AuraStudio Software License', textSecondary, textPrimary),
                     ],
                   ),
                 ),
@@ -99,7 +119,7 @@ class AboutModal extends StatelessWidget {
                 Text(
                   '© 2026 AuraStudio Corporation by Pritam.\nAll rights reserved. Powered by AuraStudio.',
                   textAlign: TextAlign.center,
-                  style: AppTheme.caption.copyWith(color: AppTheme.textTertiary, fontSize: 11, height: 1.4),
+                  style: AppTheme.caption.copyWith(color: textSecondary, fontSize: 11, height: 1.4),
                 ),
 
                 const SizedBox(height: 20),
@@ -114,7 +134,7 @@ class AboutModal extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       elevation: 0,
                     ),
-                    child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],
@@ -125,12 +145,12 @@ class AboutModal extends StatelessWidget {
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoRow(String label, String value, Color labelColor, Color valueColor) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTheme.caption.copyWith(color: AppTheme.textSecondary)),
-        Text(value, style: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600)),
+        Text(label, style: AppTheme.caption.copyWith(color: labelColor)),
+        Text(value, style: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600, color: valueColor)),
       ],
     );
   }

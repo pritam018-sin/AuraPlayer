@@ -1,3 +1,4 @@
+import 'dart:ui';
 import '../../player/track_formatters.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -15,8 +16,11 @@ class CinemaStudioModal extends StatefulWidget {
   static Future<void> show(BuildContext context, AuraPlayerWrapper wrapper) {
     return showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.65),
-      builder: (ctx) => CinemaStudioModal(playerWrapper: wrapper),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: CinemaStudioModal(playerWrapper: wrapper),
+      ),
     );
   }
 
@@ -67,8 +71,9 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
         child: FrostedGlass(
           borderRadius: 24,
           padding: EdgeInsets.zero,
-          fillColor: const Color(0xFF0C0E14).withValues(alpha: 0.94),
+          fillColor: const Color(0xFF0C0E14).withValues(alpha: 0.50),
           borderColor: AppTheme.glassBorder,
+          blur: 35,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 580, maxHeight: 620),
             child: Column(
@@ -102,7 +107,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                               ],
                             ),
                             child: const Center(
-                              child: Icon(CupertinoIcons.slider_horizontal_3, size: 17, color: Color(0xFF04131F)),
+                              child: Icon(Icons.tune_rounded, size: 17, color: Colors.white),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -150,7 +155,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                         ],
                       ),
                       IconButton(
-                        icon: const Icon(CupertinoIcons.clear_circled_solid, size: 20, color: AppTheme.textSecondary),
+                        icon: const Icon(Icons.close_rounded, size: 20, color: AppTheme.textSecondary),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ],
@@ -168,10 +173,10 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                     unselectedLabelColor: AppTheme.textSecondary,
                     labelStyle: AppTheme.caption.copyWith(fontWeight: FontWeight.w700, fontSize: 11.5),
                     tabs: const [
-                      Tab(icon: Icon(CupertinoIcons.gauge, size: 15), text: 'Playback'),
-                      Tab(icon: Icon(CupertinoIcons.speaker_2_fill, size: 15), text: 'Audio Master'),
-                      Tab(icon: Icon(CupertinoIcons.captions_bubble_fill, size: 15), text: 'Subtitles'),
-                      Tab(icon: Icon(CupertinoIcons.sparkles, size: 15), text: 'Video & Color'),
+                      Tab(icon: Icon(Icons.speed_rounded, size: 15), text: 'Playback'),
+                      Tab(icon: Icon(Icons.volume_up_rounded, size: 15), text: 'Audio Master'),
+                      Tab(icon: Icon(Icons.subtitles_rounded, size: 15), text: 'Subtitles'),
+                      Tab(icon: Icon(Icons.auto_awesome_rounded, size: 15), text: 'Video & Color'),
                     ],
                   ),
                 ),
@@ -348,10 +353,16 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                     const SizedBox(height: 10),
                     PopupMenuButton<int>(
                       tooltip: 'Set Sleep Timer',
-                      color: const Color(0xFF14141B),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF14141B)
+                          : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
-                        side: const BorderSide(color: AppTheme.glassBorder),
+                        side: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.glassBorder
+                              : AppTheme.lightGlassBorder,
+                        ),
                       ),
                       onSelected: (mins) {
                         if (mins == 0) {
@@ -380,7 +391,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(CupertinoIcons.moon_zzz_fill, size: 14, color: sleepTarget != null ? AppTheme.accent : Colors.white70),
+                            Icon(Icons.bedtime_rounded, size: 14, color: sleepTarget != null ? AppTheme.accent : Colors.white70),
                             const SizedBox(width: 6),
                             Text(
                               sleepTarget != null
@@ -502,7 +513,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                       Row(
                         children: [
                           Icon(
-                            CupertinoIcons.moon_stars_fill,
+                            Icons.nightlight_round,
                             size: 14,
                             color: wrapper.isNightMode ? AppTheme.accent : Colors.white70,
                           ),
@@ -909,7 +920,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(CupertinoIcons.arrow_counterclockwise, size: 12, color: AppTheme.textSecondary),
+                  const Icon(Icons.restart_alt_rounded, size: 12, color: AppTheme.textSecondary),
                   const SizedBox(width: 6),
                   Text('Reset Subtitle Appearance', style: AppTheme.caption.copyWith(color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
                 ],
@@ -973,7 +984,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                     setState(() {});
                   }
                 },
-                icon: const Icon(CupertinoIcons.plus, size: 13),
+                icon: const Icon(Icons.add_rounded, size: 13),
                 label: const Text('Add .SRT / .ASS File'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
@@ -1171,7 +1182,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                     );
                   }
                 },
-                icon: const Icon(CupertinoIcons.camera_fill, size: 14),
+                icon: const Icon(Icons.camera_alt_rounded, size: 14),
                 label: const Text('Capture Snapshot'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
@@ -1262,7 +1273,7 @@ class _CinemaStudioModalState extends State<CinemaStudioModal> with SingleTicker
                 ),
               ),
               if (isSelected)
-                const Icon(CupertinoIcons.checkmark_alt_circle_fill, size: 16, color: AppTheme.accent),
+                const Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.accent),
             ],
           ),
         ),
