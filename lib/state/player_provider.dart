@@ -142,8 +142,41 @@ class PlaylistState {
 }
 
 class PlaylistNotifier extends Notifier<PlaylistState> {
+  DateTime? _lastCompletionHandled;
+
   @override
-  PlaylistState build() => const PlaylistState();
+  PlaylistState build() {
+    final playerWrapper = ref.watch(playerControllerProvider);
+    playerWrapper.onPlaybackEnded = _handlePlaybackEnded;
+    return const PlaylistState();
+  }
+
+  Future<void> _handlePlaybackEnded() async {
+    final now = DateTime.now();
+    if (_lastCompletionHandled != null &&
+        now.difference(_lastCompletionHandled!).inMilliseconds < 1200) {
+      return;
+    }
+    _lastCompletionHandled = now;
+
+    final playerWrapper = ref.read(playerControllerProvider);
+    if (playerWrapper.isLiveStream) return;
+    if (playerWrapper.currentFilePath == null) return;
+
+    if (state.hasNext) {
+      // Auto-advance to next video in queue and play automatically
+      next();
+    } else {
+      // Otherwise, return to starting point (0:00) and stay paused
+      final currentPath = playerWrapper.currentFilePath;
+      if (currentPath != null) {
+        ref.read(storageServiceProvider).setPosition(currentPath, Duration.zero);
+      }
+      await playerWrapper.pause();
+      await playerWrapper.seek(Duration.zero);
+      await playerWrapper.pause();
+    }
+  }
 
   void setList(List<PlaylistItem> items, {int initialIndex = 0}) {
     state = PlaylistState(items: items, currentIndex: initialIndex);

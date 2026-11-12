@@ -260,6 +260,7 @@ class _InAppMiniPlayerState extends ConsumerState<InAppMiniPlayer> {
                             color: Colors.white.withValues(alpha: 0.15),
                             alignment: Alignment.centerLeft,
                             child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
                               widthFactor: progressRatio,
                               child: Container(
                                 color: AppTheme.accent,

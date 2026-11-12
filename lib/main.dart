@@ -37,22 +37,26 @@ Future<void> main(List<String> args) async {
     } catch (_) {}
   }
 
-  // Initialize WindowManager for frameless window with native controls
-  await windowManager.ensureInitialized();
+  // Initialize WindowManager for frameless window with native controls (Desktop only)
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    try {
+      await windowManager.ensureInitialized();
 
-  const windowOptions = WindowOptions(
-    size: Size(1280, 720),
-    minimumSize: Size(420, 240),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
+      const windowOptions = WindowOptions(
+        size: Size(1280, 720),
+        minimumSize: Size(420, 240),
+        center: true,
+        backgroundColor: Colors.transparent,
+        skipTaskbar: false,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
 
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+      await windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.show();
+        await windowManager.focus();
+      });
+    } catch (_) {}
+  }
 
   // Initialize Persistent Storage & Thumbnail Cache
   final storageService = await StorageService.init();

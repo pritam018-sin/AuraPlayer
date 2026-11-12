@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
@@ -85,27 +86,38 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
         const activeThumbRadius = 10.0;
         final currentThumbRadius = (_isHovering || _isDragging) ? activeThumbRadius : thumbRadius;
 
-        // Position of radio button thumb
+        // Position of radio button thumb (centered exactly on progress position)
         final thumbCenterDx = progress * width;
-        final thumbLeft = (thumbCenterDx - currentThumbRadius).clamp(0.0, width - 2 * currentThumbRadius);
+        final thumbLeft = thumbCenterDx - currentThumbRadius;
 
         final tooltipFraction = _isDragging ? _dragPositionFraction : _hoverPositionFraction;
         final tooltipMs = (tooltipFraction * totalMs).round();
-        final tooltipLeft = (tooltipFraction * width - 30).clamp(4.0, width - 64.0);
 
         return MouseRegion(
           cursor: SystemMouseCursors.click,
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) => setState(() => _isHovering = false),
           onHover: (event) {
+            if (width <= 0) return;
             setState(() {
               _hoverPositionFraction = (event.localPosition.dx / width).clamp(0.0, 1.0);
             });
           },
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
+            onTapDown: (details) {
+              if (totalMs <= 0 || width <= 0) return;
+              final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
+              final targetMs = (frac * totalMs).round();
+              final targetDuration = Duration(milliseconds: targetMs);
+              setState(() {
+                _optimisticTarget = targetDuration;
+                _optimisticTimestamp = DateTime.now();
+              });
+              widget.onSeek(targetDuration);
+            },
             onHorizontalDragStart: (details) {
-              if (totalMs <= 0) return;
+              if (totalMs <= 0 || width <= 0) return;
               final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
               setState(() {
                 _isDragging = true;
@@ -118,7 +130,7 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
               widget.onSeekStartEnd?.call(true);
             },
             onHorizontalDragUpdate: (details) {
-              if (totalMs <= 0) return;
+              if (totalMs <= 0 || width <= 0) return;
               final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
               setState(() {
                 _dragPositionFraction = frac;
@@ -142,104 +154,88 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
               widget.onDragChanged?.call(null);
               widget.onSeekStartEnd?.call(false);
             },
-            onTapDown: (details) {
-              if (totalMs <= 0) return;
-              final frac = (details.localPosition.dx / width).clamp(0.0, 1.0);
-              final targetMs = (frac * totalMs).round();
-              final targetDuration = Duration(milliseconds: targetMs);
-              setState(() {
-                _optimisticTarget = targetDuration;
-                _optimisticTimestamp = DateTime.now();
-              });
-              widget.onSeek(targetDuration);
+            onHorizontalDragCancel: () {
+              setState(() => _isDragging = false);
+              widget.onDragChanged?.call(null);
+              widget.onSeekStartEnd?.call(false);
             },
             child: SizedBox(
-              height: 30, // Generous hit box for effortless dragging
+              height: 32, // Generous hit box for effortless dragging
               child: Stack(
                 clipBehavior: Clip.none,
                 alignment: Alignment.centerLeft,
                 children: [
-                  // Hover / Drag Monospace Timestamp Tooltip
-                  if ((_isHovering || _isDragging) && totalMs > 0)
-                    Positioned(
-                      bottom: 26,
-                      left: tooltipLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  // 1. Full-Width Background & Progress Track
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 140),
+                        curve: Curves.easeOutCubic,
+                        width: width,
+                        height: (_isHovering || _isDragging) ? 8.0 : 5.5,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF14141B),
+                          color: Colors.white.withValues(alpha: 0.22),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppTheme.glassBorder, width: 0.8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.7),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          _formatDuration(Duration(milliseconds: tooltipMs)),
-                          style: AppTheme.caption.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            letterSpacing: 0.5,
+                          border: Border.all(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            width: 0.5,
                           ),
                         ),
-                      ),
-                    ),
-
-                  // Background & Progress Track
-                  Center(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 140),
-                      curve: Curves.easeOutCubic,
-                      height: (_isHovering || _isDragging) ? 8.0 : 5.5,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.centerLeft,
-                        children: [
-                          // Buffered Bar
-                          FractionallySizedBox(
-                            widthFactor: bufferProgress,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.42),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                          ),
-                          // Played Progress Bar (Electric Cinema Cyan gradient)
-                          FractionallySizedBox(
-                            widthFactor: progress,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: AppTheme.auraGradient,
-                                borderRadius: BorderRadius.circular(6),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.accent.withValues(alpha: 0.6),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Stack(
+                            alignment: Alignment.centerLeft,
+                            children: [
+                              // Buffered Bar (strictly left-to-right)
+                              if (bufferProgress > 0)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Container(
+                                    width: (width * bufferProgress).clamp(0.0, width),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.42),
+                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
+                                ),
+                              // Hover Preview Bar (YouTube-style preview ghost bar up to cursor)
+                              if (_isHovering && !_isDragging && _hoverPositionFraction > 0)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Container(
+                                    width: (width * _hoverPositionFraction).clamp(0.0, width),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.20),
+                                    ),
+                                  ),
+                                ),
+                              // Played Progress Bar (Electric Cinema Cyan gradient, strictly left-to-right)
+                              if (progress > 0)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Container(
+                                    width: (width * progress).clamp(0.0, width),
+                                    decoration: BoxDecoration(
+                                      gradient: AppTheme.auraGradient,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppTheme.accent.withValues(alpha: 0.6),
+                                          blurRadius: 8,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
 
-                  // Draggable Circular "Radio Button" Thumb Handle
+                  // 2. Draggable Circular "Radio Button" Thumb Handle
                   Positioned(
                     left: thumbLeft,
                     child: AnimatedContainer(
@@ -279,6 +275,45 @@ class _CustomSeekBarState extends State<CustomSeekBar> {
                       ),
                     ),
                   ),
+
+                  // 3. Hover / Drag Monospace Timestamp Tooltip (Rendered on top)
+                  if ((_isHovering || _isDragging) && totalMs > 0)
+                    Positioned(
+                      bottom: 26,
+                      left: (tooltipFraction * width).clamp(36.0, width - 36.0),
+                      child: FractionalTranslation(
+                        translation: const Offset(-0.5, 0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF14141B).withValues(alpha: 0.95),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppTheme.accent.withValues(alpha: 0.6), width: 0.8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                              BoxShadow(
+                                color: AppTheme.accent.withValues(alpha: 0.25),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            _formatDuration(Duration(milliseconds: tooltipMs)),
+                            style: AppTheme.caption.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              letterSpacing: 0.5,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

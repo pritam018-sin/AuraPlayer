@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../player/player_controller.dart';
@@ -84,10 +85,13 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                             // Instantaneous sync during scrubbing
                             final effectivePos = _draggedSeekPosition ?? position;
 
+                            final remaining = (duration - effectivePos).isNegative
+                                ? Duration.zero
+                                : (duration - effectivePos);
                             final timeDisplay = isLive
-                                ? '● LIVE'
+                                ? 'LIVE'
                                 : (_showRemainingTime
-                                    ? '-${_formatDuration(duration - effectivePos)} / ${_formatDuration(duration)}'
+                                    ? '-${_formatDuration(remaining)} / ${_formatDuration(duration)}'
                                     : '${_formatDuration(effectivePos)} / ${_formatDuration(duration)}');
 
                             return AnimatedOpacity(
@@ -206,23 +210,53 @@ class _FloatingControlsState extends ConsumerState<FloatingControls> {
                                                   const SizedBox(width: 14),
 
                                                   // Time Indicator
-                                                  InkWell(
-                                                    onTap: () => setState(() => _showRemainingTime = !_showRemainingTime),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                    child: Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.white.withValues(alpha: 0.08),
-                                                        borderRadius: BorderRadius.circular(6),
-                                                        border: Border.all(color: AppTheme.glassBorder),
-                                                      ),
-                                                      child: Text(
-                                                        timeDisplay,
-                                                        style: AppTheme.caption.copyWith(
-                                                          fontWeight: FontWeight.w600,
-                                                          color: Colors.white,
-                                                          fontSize: 12,
-                                                          letterSpacing: 0.3,
+                                                  Tooltip(
+                                                    message: 'Click to toggle elapsed / remaining time',
+                                                    child: InkWell(
+                                                      onTap: () => setState(() => _showRemainingTime = !_showRemainingTime),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      child: AnimatedContainer(
+                                                        duration: const Duration(milliseconds: 150),
+                                                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                                        decoration: BoxDecoration(
+                                                          color: _draggedSeekPosition != null
+                                                              ? AppTheme.accent.withValues(alpha: 0.15)
+                                                              : Colors.white.withValues(alpha: 0.08),
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          border: Border.all(
+                                                            color: _draggedSeekPosition != null
+                                                                ? AppTheme.accent.withValues(alpha: 0.6)
+                                                                : AppTheme.glassBorder,
+                                                            width: 0.8,
+                                                          ),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            if (isLive) ...[
+                                                              Container(
+                                                                width: 6,
+                                                                height: 6,
+                                                                decoration: const BoxDecoration(
+                                                                  color: Color(0xFFEF4444),
+                                                                  shape: BoxShape.circle,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(width: 6),
+                                                            ],
+                                                            Text(
+                                                              timeDisplay,
+                                                              style: AppTheme.caption.copyWith(
+                                                                fontWeight: FontWeight.w600,
+                                                                color: _draggedSeekPosition != null
+                                                                    ? AppTheme.accent
+                                                                    : Colors.white,
+                                                                fontSize: 12,
+                                                                letterSpacing: 0.3,
+                                                                fontFeatures: const [FontFeature.tabularFigures()],
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
                                                       ),
                                                     ),

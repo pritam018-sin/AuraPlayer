@@ -28,6 +28,9 @@ class AuraPlayerWrapper {
   final ValueNotifier<bool> isBufferingNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<String?> streamErrorNotifier = ValueNotifier<String?>(null);
 
+  // Playback completion callback for auto-advancing queue or returning to start paused
+  VoidCallback? onPlaybackEnded;
+
   // Video Adjustments
   double brightness = 0.0; // -100 to 100
   double contrast = 0.0;   // -100 to 100
@@ -125,6 +128,9 @@ class AuraPlayerWrapper {
       if (completed && path != null && !path.startsWith('http://') && !path.startsWith('https://')) {
         // Reset saved position if offline video reached the end
         storageService.setPosition(path, Duration.zero);
+      }
+      if (completed) {
+        onPlaybackEnded?.call();
       }
     });
   }
